@@ -8,6 +8,10 @@
 -- -------------------------------------------------------------------------------------------------
 -- Collection of types/functions for working with address decode/matching.
 -- -------------------------------------------------------------------------------------------------
+-- Copyright (c) DESY
+-- Modified:
+-- * added calc_slaves_mask
+-- * added calc_slaves_base_addresses
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -83,6 +87,14 @@ package addr_pkg is
   -- it to 3000.
   -- This might be unintuitive for some users.
   function calculate_minimal_mask(addrs : addr_vec_t) return addr_and_mask_vec_t;
+
+  function calc_slaves_mask(nbits   : positive;
+                            nslaves : positive) return addr_t;
+
+  function calc_slaves_base_addresses(
+    nbits   : positive;
+    nslaves : positive
+    ) return addr_vec_t;
 
 end package;
 
@@ -404,6 +416,32 @@ package body addr_pkg is
     report "Cost = " & integer'image(get_mask_cost(result)) severity note;
 
     return result;
+  end function;
+
+  -- Return the address mask to address nslaves slaves.
+  -- nbits: number of addr bits needed by the slave.
+  function calc_slaves_mask(nbits   : positive;
+                            nslaves : positive)
+    return addr_t is
+    variable v_result : addr_t := (others => '0');
+  begin
+    v_result(nbits + num_bits_needed(nslaves-1) - 1 downto nbits) := (others => '1');
+    return v_result;
+  end function;
+
+  -- Return the address_and_mask_vec_t (base address and mask) to address
+  -- nslaves slaves.
+  -- nbits: number of addr bits needed by the slave.
+  function calc_slaves_base_addresses(
+    nbits   : positive;
+    nslaves : positive)
+    return addr_vec_t is
+    variable v_result : addr_vec_t(0 to nslaves-1);
+  begin
+    for idx in 0 to nslaves-1 loop
+      v_result(idx) := shift_left(to_unsigned(idx, v_result(idx)'length), nbits);
+    end loop;
+    return v_result;
   end function;
 
 end package body;
