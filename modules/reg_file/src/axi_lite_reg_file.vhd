@@ -1,11 +1,21 @@
 -- -------------------------------------------------------------------------------------------------
 -- Copyright (c) Lukas Vik. All rights reserved.
+-- Copyright (c) DESY
 --
 -- This file is part of the hdl-modules project, a collection of reusable, high-quality,
 -- peer-reviewed VHDL building blocks.
 -- https://hdl-modules.com
 -- https://github.com/hdl-modules/hdl-modules
 -- -------------------------------------------------------------------------------------------------
+-- Modified file is part of the corel project
+-- https://gitlab.desy.de/ultrasat-camera/corel
+--
+-- Changes:
+-- * added async reset logic (can be left unconnected)
+-- * added axi write strobe handling (big or little endian)
+-- * regs_up_valid, regs_up_ready, regs_up_slverr
+-- * regs_down_slverr, regs_down_strb
+-------------------------------------------------------------------------------
 -- Generic, parameterizable, register file for AXI-Lite register buses.
 -- Is parameterizable via a generic that sets the list of registers, with their modes and their
 -- default values.
@@ -48,27 +58,37 @@ use work.reg_file_pkg.all;
 
 entity axi_lite_reg_file is
   generic (
-    regs : reg_definition_vec_t;
-    default_values : reg_vec_t(regs'range) := (others => (others => '0'))
-  );
+    regs           : reg_definition_vec_t;
+    default_values : reg_vec_t(regs'range) := (others => (others => '0'));
+    use_wstrb      : boolean               := false;
+    -- If 'big' wstrb(0) qualifies the most significant byte.  If 'small', the
+    -- least significant.
+    big_endian     : boolean               := true  -- true for big, false for little
+    );
   port (
-    clk : in std_ulogic;
+    rst_n            : in  std_ulogic                    := '1';
+    clk              : in  std_ulogic;
     --# {{}}
     --# Register control bus
-    axi_lite_m2s : in axi_lite_m2s_t;
-    axi_lite_s2m : out axi_lite_s2m_t := axi_lite_s2m_init;
+    axi_lite_m2s     : in  axi_lite_m2s_t;
+    axi_lite_s2m     : out axi_lite_s2m_t                := axi_lite_s2m_init;
     --# {{}}
     -- Register values
-    regs_up : in reg_vec_t(regs'range) := default_values;
-    regs_down : out reg_vec_t(regs'range) := default_values;
+    regs_up          : in  reg_vec_t(regs'range)         := default_values;
+    regs_up_valid    : in  std_ulogic_vector(regs'range) := (others => '1');
+    regs_up_ready    : out std_ulogic_vector(regs'range) := (others => '0');
+    regs_up_slverr   : in  std_ulogic_vector(regs'range) := (others => '0');
+    regs_down        : out reg_vec_t(regs'range)         := default_values;
+    regs_down_slverr : in  std_ulogic_vector(regs'range) := (others => '0');
     --# {{}}
     -- Each bit is pulsed for one cycle when the corresponding register is read/written.
     -- For read, the bit is asserted the exact same cycle as the AXI-Lite R transaction occurs.
     -- For write, the bit is asserted the cycle after the AXI-Lite W transaction occurs, so that
     -- 'regs_down' is updated with the new value.
-    reg_was_read : out std_ulogic_vector(regs'range) := (others => '0');
-    reg_was_written : out std_ulogic_vector(regs'range) := (others => '0')
-  );
+    reg_was_read     : out std_ulogic_vector(regs'range) := (others => '0');
+    reg_was_written  : out std_ulogic_vector(regs'range) := (others => '0');
+    reg_down_strb    : out std_ulogic_vector(axi_lite_w_strb_sz-1 downto 0)
+    );
 end entity;
 
 architecture a of axi_lite_reg_file is
@@ -82,144 +102,247 @@ architecture a of axi_lite_reg_file is
 
 begin
 
-  regs_down <= reg_values;
-
-
-  ------------------------------------------------------------------------------
   read_block : block
     type read_state_t is (ar, r);
     signal read_state : read_state_t := ar;
-    signal read_idx : decoded_idx_t := invalid_addr;
-    signal valid_read_address : boolean := false;
   begin
 
-    -- An address transaction has occurred and the address points to a valid read register
-    valid_read_address <= read_idx /= invalid_addr and is_read_type(regs(read_idx).reg_type);
+    read_process : process(clk, rst_n)
+      variable v_data        : reg_t;
+      variable v_read_idx    : integer range regs'range;
+      variable v_decoded_idx : decoded_idx_t;
 
+      -- An address transaction has occured and the address points to a valid
+      -- read register
+      function is_valid_read_address (
+        idx : integer) return boolean is
+      begin
+        return (
+          idx /= invalid_addr and
+          is_read_type(regs(idx).reg_type));
+      end function;
 
-    ------------------------------------------------------------------------------
-    set_status : process(all)
-    begin
-      reg_was_read <= (others => '0');
-
-      if valid_read_address then
-        reg_was_read(read_idx) <= axi_lite_m2s.read.r.ready and axi_lite_s2m.read.r.valid;
-      end if;
-    end process;
-
-
-    ------------------------------------------------------------------------------
-    read_process : process
-    begin
-      wait until rising_edge(clk);
-
-      axi_lite_s2m.read.r.valid <= '0';
-
-      if valid_read_address then
-        axi_lite_s2m.read.r.resp <= axi_resp_okay;
-
-        if is_fabric_gives_value_type(regs(read_idx).reg_type) then
-          axi_lite_s2m.read.r.data(reg_values(0)'range) <= regs_up(read_idx);
+      -- purpose: set axi read data and read response. If address is valid
+      -- response is okay, else slverr.
+      procedure set_axi_response (
+        idx  : natural;
+        data : reg_t
+        ) is
+      begin
+        if is_valid_read_address(idx) and regs_up_slverr(idx) = '0' then
+          axi_lite_s2m.read.r.resp <= axi_resp_okay;
+          axi_lite_s2m.read.r.data(data'range) <= data;
         else
-          axi_lite_s2m.read.r.data(reg_values(0)'range) <= reg_values(read_idx);
+          axi_lite_s2m.read.r.resp <= axi_resp_slverr;
+          axi_lite_s2m.read.r.data <= (others => '-');
         end if;
-      else
-        axi_lite_s2m.read.r.resp <= axi_resp_slverr;
-        axi_lite_s2m.read.r.data <= (others => '-');
-      end if;
+      end procedure set_axi_response;
 
-      case read_state is
-        when ar =>
-          axi_lite_s2m.read.ar.ready <= '1';
+    begin
+      if not rst_n then
+        axi_lite_s2m.read <= axi_lite_read_s2m_init;
+        read_state        <= ar;
 
-          if axi_lite_m2s.read.ar.valid and axi_lite_s2m.read.ar.ready then
-            axi_lite_s2m.read.ar.ready <= '0';
-            read_idx <= decode(axi_lite_m2s.read.ar.addr, addr_and_mask_vec);
+        v_data        := (others => '-');
+        v_decoded_idx := invalid_addr;
+        v_read_idx    := 0;
 
-            read_state <= r;
-          end if;
+        v_decoded_idx := invalid_addr;
+        regs_up_ready <= (others => '0');
+        reg_was_read  <= (others => '0');
+      elsif rising_edge(clk) then
 
-        when r =>
-          axi_lite_s2m.read.r.valid <= '1';
+        axi_lite_s2m.read <= axi_lite_read_s2m_init;
 
-          if axi_lite_m2s.read.r.ready and axi_lite_s2m.read.r.valid then
-            axi_lite_s2m.read.r.valid <= '0';
+        reg_was_read <= (others => '0');
+        v_data       := (others => '-');
+
+        case read_state is
+          when ar =>
+            v_read_idx    := 0;
+            v_decoded_idx := invalid_addr;
+
             axi_lite_s2m.read.ar.ready <= '1';
+            regs_up_ready              <= (others => '0');
 
-            read_state <= ar;
-          end if;
-      end case;
+            if axi_lite_m2s.read.ar.valid and axi_lite_s2m.read.ar.ready then
+              axi_lite_s2m.read.ar.ready <= '0';
+              v_decoded_idx              := decode(axi_lite_m2s.read.ar.addr, addr_and_mask_vec);
+              if v_decoded_idx /= invalid_addr then
+                v_read_idx := v_decoded_idx;
+              end if;
+
+              read_state <= r;
+            end if;
+
+          when r =>
+            axi_lite_s2m.read.r.valid <= '1';
+            regs_up_ready(v_read_idx) <= '1';
+
+            if is_fabric_gives_value_type(regs(v_read_idx).reg_type) then
+              if not regs_up_valid(v_read_idx) then
+                -- hold off transaction if regs_up_valid(idx) is
+                -- deasserted.
+                axi_lite_s2m.read.r.valid <= '0';
+              else
+                v_data := regs_up(v_read_idx);
+              end if;
+            else
+              v_data := regs_down(v_read_idx);
+            end if;
+
+            set_axi_response(v_read_idx, v_data);
+
+            if axi_lite_m2s.read.r.ready and axi_lite_s2m.read.r.valid then
+              axi_lite_s2m.read.r.valid  <= '0';
+              axi_lite_s2m.read.ar.ready <= '1';
+              regs_up_ready              <= (others => '0');
+
+              if is_valid_read_address(v_read_idx) then
+                reg_was_read(v_read_idx) <= '1';
+              end if;
+
+              read_state <= ar;
+            end if;
+        end case;
+
+      end if;
     end process;
   end block;
 
 
-  ------------------------------------------------------------------------------
   write_block : block
     type write_state_t is (aw, w, b);
     signal write_state : write_state_t := aw;
-    signal write_idx : decoded_idx_t := invalid_addr;
-    signal valid_write_address : boolean := false;
   begin
 
-    -- An address transaction has occurred and the address points to a valid write register
-    valid_write_address <= write_idx /= invalid_addr and is_write_type(regs(write_idx).reg_type);
+    write_process : process(clk, rst_n)
+      variable v_byte_idx    : integer range 0 to axi_lite_w_strb_sz-1;
+      variable v_decoded_idx : decoded_idx_t;
+      variable v_write_idx   : integer range regs'range;
+      variable v_data        : reg_t;
 
+      -- An address transaction has occured and the address points to a valid
+      -- write register
+      function is_valid_write_address (
+        idx : integer) return boolean is
+      begin
+        return idx /= invalid_addr and
+          is_write_type(regs(idx).reg_type);
+      end function;
 
-    ------------------------------------------------------------------------------
-    write_process : process
-    begin
-      wait until rising_edge(clk);
-
-      reg_was_written <= (others => '0');
-
-      if valid_write_address then
-        axi_lite_s2m.write.b.resp <= axi_resp_okay;
-      else
-        axi_lite_s2m.write.b.resp <= axi_resp_slverr;
-      end if;
-
-      for list_idx in regs'range loop
-        if is_write_pulse_type(regs(list_idx).reg_type) then
-          -- Set initial default value.
-          -- If a write occurs to this register, the value will be asserted for one cycle below.
-          reg_values(list_idx) <= default_values(list_idx);
+      -- purpose: set axi write response. If address is valid response is okay,
+      -- else slverr.
+      procedure set_axi_response (
+        idx : natural
+        ) is
+      begin
+        if is_valid_write_address(idx) and regs_down_slverr(idx) = '0' then
+          axi_lite_s2m.write.b.resp <= axi_resp_okay;
+        else
+          axi_lite_s2m.write.b.resp <= axi_resp_slverr;
         end if;
-      end loop;
+      end procedure set_axi_response;
 
-      case write_state is
-        when aw =>
-          axi_lite_s2m.write.aw.ready <= '1';
+    begin
+      if not rst_n then
+        axi_lite_s2m.write <= axi_lite_write_s2m_init;
 
-          if axi_lite_m2s.write.aw.valid and axi_lite_s2m.write.aw.ready then
-            axi_lite_s2m.write.aw.ready <= '0';
-            axi_lite_s2m.write.w.ready <= '1';
+        regs_down <= default_values;
 
-            write_idx <= decode(axi_lite_m2s.write.aw.addr, addr_and_mask_vec);
+        write_state   <= aw;
+        v_decoded_idx := invalid_addr;
+        v_write_idx   := 0;
+        v_data        := (others => '-');
 
-            write_state <= w;
+        regs_down     <= default_values;
+        reg_down_strb <= (others => '0');
+      elsif rising_edge(clk) then
+
+        axi_lite_s2m.write <= axi_lite_write_s2m_init;
+        reg_down_strb      <= (others => '0');
+        reg_was_written    <= (others => '0');
+        v_data             := (others => '-');
+
+        -- if valid_write_address then
+        --   axi_lite_s2m.write.b.resp <= axi_resp_okay;
+        -- else
+        --   axi_lite_s2m.write.b.resp <= axi_resp_slverr;
+        -- end if;
+
+        -- clear write pulse registers
+        for idx in regs'range loop
+          if is_write_pulse_type(regs(idx).reg_type) then
+            regs_down(idx) <= default_values(idx);
           end if;
+        end loop;
 
-        when w =>
-          if axi_lite_m2s.write.w.valid and axi_lite_s2m.write.w.ready then
-            if valid_write_address then
-              reg_values(write_idx) <= axi_lite_m2s.write.w.data(reg_values(0)'range);
-              reg_was_written(write_idx) <= '1';
+        case write_state is
+          when aw =>
+            v_write_idx   := 0;
+            v_decoded_idx := invalid_addr;
+
+            axi_lite_s2m.write.aw.ready <= '1';
+            if axi_lite_m2s.write.aw.valid and axi_lite_s2m.write.aw.ready then
+              axi_lite_s2m.write.aw.ready <= '0';
+
+              v_decoded_idx := decode(axi_lite_m2s.write.aw.addr, addr_and_mask_vec);
+              if v_decoded_idx /= invalid_addr then
+                v_write_idx := v_decoded_idx;
+              end if;
+
+              axi_lite_s2m.write.w.ready <= '1';
+              write_state                <= w;
             end if;
 
-            axi_lite_s2m.write.w.ready <= '0';
+          when w =>
+            axi_lite_s2m.write.w.ready <= '1';
+            if axi_lite_m2s.write.w.valid and axi_lite_s2m.write.w.ready then
+              axi_lite_s2m.write.w.ready <= '0';
+
+              if is_valid_write_address(v_write_idx) then
+
+                if use_wstrb then
+                  v_data := regs_down(v_write_idx);
+                  for i in axi_lite_m2s.write.w.strb'range loop
+                    if axi_lite_m2s.write.w.strb(i) then
+
+                      if not big_endian then
+                        v_byte_idx := i;
+                      else
+                        v_byte_idx := axi_lite_w_strb_sz-i-1;
+                      end if;
+
+                      v_data(
+                        (v_byte_idx+1)*8-1 downto v_byte_idx*8) := axi_lite_m2s.write.w.data((v_byte_idx+1)*8-1 downto v_byte_idx*8);
+                    end if;
+                  end loop;
+
+                else
+                  -- not using write strobe => write all bytes.
+                  v_data := axi_lite_m2s.write.w.data(v_data'range);
+                end if;
+
+                regs_down(v_write_idx)      <= axi_lite_m2s.write.w.data(regs_down(0)'range);
+                reg_was_written(v_write_idx) <= '1';
+              end if;
+
+              set_axi_response(v_write_idx);
+              axi_lite_s2m.write.b.valid <= '1';
+              write_state                <= b;
+              reg_down_strb                <= axi_lite_m2s.write.w.strb;
+            end if;
+
+          when b =>
             axi_lite_s2m.write.b.valid <= '1';
+            if axi_lite_m2s.write.b.ready and axi_lite_s2m.write.b.valid then
+              axi_lite_s2m.write.aw.ready <= '1';
+              axi_lite_s2m.write.b.valid  <= '0';
 
-            write_state <= b;
-          end if;
-
-        when b =>
-          if axi_lite_m2s.write.b.ready and axi_lite_s2m.write.b.valid then
-            axi_lite_s2m.write.aw.ready <= '1';
-            axi_lite_s2m.write.b.valid <= '0';
-
-            write_state <= aw;
-          end if;
-      end case;
+              write_state <= aw;
+            end if;
+        end case;
+      end if;
     end process;
   end block;
 
