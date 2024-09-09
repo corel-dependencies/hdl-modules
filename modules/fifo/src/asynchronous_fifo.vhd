@@ -13,9 +13,13 @@
 -- The implementation is quite optimized with very low resource utilization when extra features
 -- are not enabled.
 --
+-- For more CDC solutions, please see :ref:`module_resync`.
+--
 -- .. note::
---   This entity has a scoped constraint file that must be used.
---   See the ``scoped_constraints`` folder for the file with the same name.
+--   This entity has a scoped constraint file
+--   `asynchronous_fifo.tcl <https://github.com/hdl-modules/hdl-modules/blob/main/modules/fifo/scoped_constraints/asynchronous_fifo.tcl>`__
+--   that must be used for proper operation.
+--   See :ref:`here <scoped_constraints>` for instructions.
 --   This entity also instantiates :ref:`resync.resync_counter` which has a further constraint file
 --   that must be used.
 --
@@ -64,6 +68,27 @@ entity asynchronous_fifo is
     ram_type : ram_style_t := ram_style_auto
   );
   port (
+    -- Write data interface
+    clk_write : in std_ulogic;
+    -- '1' if FIFO is not full
+    write_ready : out std_ulogic := '1';
+    write_valid : in  std_ulogic;
+    write_data  : in  std_ulogic_vector(width - 1 downto 0);
+    -- Must set 'enable_last' generic in order to use this
+    write_last : in std_ulogic := '0';
+
+    -- Status signals on the write side. Updated one clock cycle after write transactions.
+    -- Updated "a while" after read transactions (not deterministic).
+    -- In case the enable_output_register is set, this value will never go below 1
+    write_level : out natural range 0 to depth := to_int(enable_output_register);
+    -- '1' if there are 'almost_full_level' or more words available in the FIFO
+    write_almost_full : out std_ulogic := '0';
+
+    -- Drop the current packet (all words that have been written since the previous 'write_last').
+    -- Must set 'enable_drop_packet' generic in order to use this.
+    drop_packet : in std_ulogic := '0';
+
+    --# {{}}
     -- Read data interface
     clk_read : in std_ulogic;
     read_ready : in  std_ulogic;
@@ -84,28 +109,7 @@ entity asynchronous_fifo is
     -- Note that this port will be CONSTANTLY ONE if the 'enable_packet_mode' generic is set
     -- to true, and 'almost_empty_level' has a non-default value.
     -- This is since a glitch-free value of 'read_level' can not be guaranteed in this mode.
-    read_almost_empty : out std_ulogic := '1';
-
-    --# {{}}
-    -- Write data interface
-    clk_write : in std_ulogic;
-    -- '1' if FIFO is not full
-    write_ready : out std_ulogic := '1';
-    write_valid : in  std_ulogic;
-    write_data  : in  std_ulogic_vector(width - 1 downto 0);
-    -- Must set 'enable_last' generic in order to use this
-    write_last : in std_ulogic := '0';
-
-    -- Status signals on the write side. Updated one clock cycle after write transactions.
-    -- Updated "a while" after read transactions (not deterministic).
-    -- In case the enable_output_register is set, this value will never go below 1
-    write_level : out natural range 0 to depth := to_int(enable_output_register);
-    -- '1' if there are 'almost_full_level' or more words available in the FIFO
-    write_almost_full : out std_ulogic := '0';
-
-    -- Drop the current packet (all words that have been written since the previous 'write_last').
-    -- Must set 'enable_drop_packet' generic in order to use this.
-    drop_packet : in std_ulogic := '0'
+    read_almost_empty : out std_ulogic := '1'
   );
 end entity;
 
@@ -242,10 +246,10 @@ begin
         width => read_addr_next'length
       )
       port map (
-        clk_in      => clk_read,
-        counter_in  => read_addr_next,
+        clk_in => clk_read,
+        counter_in => read_addr_next,
         --
-        clk_out     => clk_write,
+        clk_out => clk_write,
         counter_out => read_addr_resync
       );
 
@@ -399,10 +403,10 @@ begin
           width => write_addr'length
         )
         port map (
-          clk_in      => clk_write,
-          counter_in  => write_addr,
+          clk_in => clk_write,
+          counter_in => write_addr,
           --
-          clk_out     => clk_read,
+          clk_out => clk_read,
           counter_out => write_addr_resync
         );
 
@@ -419,10 +423,10 @@ begin
           width => num_lasts_written'length
         )
         port map (
-          clk_in      => clk_write,
-          counter_in  => num_lasts_written,
+          clk_in => clk_write,
+          counter_in => num_lasts_written,
           --
-          clk_out     => clk_read,
+          clk_out => clk_read,
           counter_out => num_lasts_written_resync
         );
 
