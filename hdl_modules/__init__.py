@@ -10,6 +10,7 @@
 # Standard libraries
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
+import importlib.metadata
 
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 REPO_ROOT = Path(__file__).parent.parent.resolve()
 
-__version__ = "0.0.1+ultrasat.1.0.0"
+__version__ = importlib.metadata.version(__package__ or __name__)
 
 
 def get_hdl_modules(
