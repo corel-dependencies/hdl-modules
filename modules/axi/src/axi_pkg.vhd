@@ -39,7 +39,7 @@ package axi_pkg is
   -- Address field (ARADDR or AWADDR).
   -- The width value below is a max value, implementation should only take into regard the bits
   -- that are actually used.
-  constant axi_a_addr_sz : positive := 64;
+  constant axi_a_addr_sz : positive := 32;
 
   -- Length field (ARLEN or AWLEN)
   -- Number of beats (data transfers) in this burst = AxLEN + 1
