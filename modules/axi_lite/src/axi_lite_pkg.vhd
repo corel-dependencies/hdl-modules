@@ -53,7 +53,7 @@ package axi_lite_pkg is
   -- Data field (RDATA or WDATA).
   -- The width value below is a max value, implementation should only take into regard the bits
   -- that are actually used.
-  constant axi_lite_data_sz : positive := 64;
+  constant axi_lite_data_sz : positive := 32;
 
   -- Check that a provided data width is valid to be used with AXI-Lite.
   -- Return 'true' if everything is okay, otherwise 'false'.
