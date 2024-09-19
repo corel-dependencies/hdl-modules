@@ -50,7 +50,9 @@ architecture a of axi_master is
 begin
 
   ------------------------------------------------------------------------------
-  axi_read_m2s.ar.addr(araddr'range) <= unsigned(araddr);
+  axi_read_m2s.ar.addr <= (araddr'range =>  unsigned(araddr),
+                           others => '0');
+  axi_read_m2s.ar.id <= (others => '0');
   axi_read_m2s.ar.len <= len;
   axi_read_m2s.ar.size <= size;
   axi_read_m2s.ar.burst <= axi_a_burst_incr;
@@ -58,13 +60,16 @@ begin
   rdata <= axi_read_s2m.r.data(rdata'range);
 
   axi_write_m2s.aw.addr(awaddr'range) <= unsigned(awaddr);
+  axi_write_m2s.aw.id <= (others => '0');
   axi_write_m2s.aw.len <= len;
   axi_write_m2s.aw.size <= size;
   axi_write_m2s.aw.burst <= axi_a_burst_incr;
 
-  axi_write_m2s.w.data(wdata'range) <= wdata;
+  axi_write_m2s.w.data <= (wdata'range =>  wdata,
+                           others => '0');
   axi_write_m2s.w.last <= '1';
   axi_write_m2s.w.strb(wstrb'range) <= wstrb;
+  axi_write_m2s.w.id <= (others => '0');
 
 
   ------------------------------------------------------------------------------

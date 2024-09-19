@@ -30,6 +30,7 @@ end entity;
 architecture tb of tb_unsigned_divider is
 
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic;
 
   signal input_ready : std_logic := '0';
   signal input_valid : std_logic := '0';
@@ -45,6 +46,7 @@ begin
 
   test_runner_watchdog(runner, 20 ms);
   clk <= not clk after 2 ns;
+  rst_n <= '0', '1' after 4 ns;
 
 
   ------------------------------------------------------------------------------
@@ -65,6 +67,8 @@ begin
 
   begin
     test_runner_setup(runner, runner_cfg);
+
+    wait until rst_n;
 
     if run("division") then
       for dividend_tb in 0 to 2**dividend_width - 1 loop
@@ -95,6 +99,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
 
       input_ready => input_ready,
       input_valid => input_valid,

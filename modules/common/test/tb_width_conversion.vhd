@@ -36,6 +36,7 @@ architecture tb of tb_width_conversion is
   constant output_bytes_per_beat : positive := output_width / 8;
 
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic := '0';
   constant clk_period : time := 10 ns;
 
   signal input_ready, input_valid, input_last : std_logic := '0';
@@ -72,6 +73,7 @@ begin
 
   test_runner_watchdog(runner, 2 ms);
   clk <= not clk after clk_period / 2;
+  rst_n <= '0', '1' after 2*clk_period;
 
 
   ------------------------------------------------------------------------------
@@ -89,6 +91,8 @@ begin
   begin
     test_runner_setup(runner, runner_cfg);
     rnd.InitSeed(rnd'instance_name);
+
+    wait until rst_n = '1';
 
     if run("test_data") then
       wait until
@@ -126,6 +130,7 @@ begin
     rnd_jitter.InitSeed("stimuli" & rnd_jitter'instance_name);
     rnd_data.InitSeed("rnd_data");
 
+    wait until rst_n = '1';
     while num_stimuli_done < num_test_loops loop
       num_bytes_remaining := num_bytes_per_test;
       num_input_words_sent := 0;
@@ -191,6 +196,7 @@ begin
     rnd_jitter.InitSeed("data_check" & rnd_jitter'instance_name);
     rnd_data.InitSeed("rnd_data");
 
+    wait until rst_n = '1';
     while num_data_check_done < num_test_loops loop
       num_bytes_remaining := num_bytes_per_test;
 
@@ -245,6 +251,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
       --
       input_ready => input_ready,
       input_valid => input_valid,

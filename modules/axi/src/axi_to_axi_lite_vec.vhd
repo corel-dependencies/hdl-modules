@@ -29,11 +29,13 @@ entity axi_to_axi_lite_vec is
   );
   port (
     clk_axi : in std_logic;
+    rst_axi_n : in std_ulogic;
     axi_m2s : in axi_m2s_t;
     axi_s2m : out axi_s2m_t;
 
     -- Only need to set if different from axi_clk
     clk_axi_lite_vec : in std_logic_vector(axi_lite_slaves'range) := (others => '0');
+    rst_axi_lite_vec_n : in std_ulogic_vector(axi_lite_slaves'range) := (others => '0');
     axi_lite_m2s_vec : out axi_lite_m2s_vec_t(axi_lite_slaves'range);
     axi_lite_s2m_vec : in axi_lite_s2m_vec_t(axi_lite_slaves'range)
   );
@@ -41,8 +43,8 @@ end entity;
 
 architecture a of axi_to_axi_lite_vec is
 
-  signal axi_lite_m2s, axi_lite_pipelined_m2s : axi_lite_m2s_t := axi_lite_m2s_init;
-  signal axi_lite_s2m, axi_lite_pipelined_s2m : axi_lite_s2m_t := axi_lite_s2m_init;
+  signal axi_lite_m2s, axi_lite_pipelined_m2s : axi_lite_m2s_t;
+  signal axi_lite_s2m, axi_lite_pipelined_s2m : axi_lite_s2m_t;
 
   constant addr_width : positive := addr_bits_needed(axi_lite_slaves);
 
@@ -55,6 +57,7 @@ begin
     )
     port map (
       clk => clk_axi,
+      rst_n => rst_axi_n,
 
       axi_m2s => axi_m2s,
       axi_s2m => axi_s2m,
@@ -73,6 +76,7 @@ begin
       )
       port map (
         clk => clk_axi,
+        rst_n => rst_axi_n,
         --
         master_m2s => axi_lite_m2s,
         master_s2m => axi_lite_s2m,
@@ -95,10 +99,12 @@ begin
     )
     port map (
       clk_axi_lite => clk_axi,
+      rst_axi_lite_n => rst_axi_n,
       axi_lite_m2s => axi_lite_pipelined_m2s,
       axi_lite_s2m => axi_lite_pipelined_s2m,
 
       clk_axi_lite_vec => clk_axi_lite_vec,
+      rst_axi_lite_vec_n => rst_axi_lite_vec_n,
       axi_lite_m2s_vec => axi_lite_m2s_vec,
       axi_lite_s2m_vec => axi_lite_s2m_vec
     );

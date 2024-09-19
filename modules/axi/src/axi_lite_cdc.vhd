@@ -30,11 +30,13 @@ entity axi_lite_cdc is
   );
   port (
     clk_master : in std_logic;
+    rst_master_n : in std_ulogic;
     master_m2s : in axi_lite_m2s_t;
-    master_s2m : out axi_lite_s2m_t := axi_lite_s2m_init;
+    master_s2m : out axi_lite_s2m_t;
     --
     clk_slave : in std_logic;
-    slave_m2s : out axi_lite_m2s_t := axi_lite_m2s_init;
+    rst_slave_n : in std_ulogic;
+    slave_m2s : out axi_lite_m2s_t;
     slave_s2m : in axi_lite_s2m_t
   );
 end entity;
@@ -59,11 +61,13 @@ begin
       )
       port map(
         clk_read => clk_slave,
+        rst_read_n => rst_slave_n,
         read_ready => slave_s2m.write.aw.ready,
         read_valid => slave_m2s.write.aw.valid,
         read_data => read_data,
         --
         clk_write => clk_master,
+        rst_write_n => rst_master_n,
         write_ready => master_s2m.write.aw.ready,
         write_valid => master_m2s.write.aw.valid,
         write_data => write_data
@@ -89,11 +93,13 @@ begin
       )
       port map(
         clk_read => clk_slave,
+        rst_read_n => rst_slave_n,
         read_ready => slave_s2m.write.w.ready,
         read_valid => slave_m2s.write.w.valid,
         read_data => read_data,
         --
         clk_write => clk_master,
+        rst_write_n => rst_master_n,
         write_ready => master_s2m.write.w.ready,
         write_valid => master_m2s.write.w.valid,
         write_data => write_data
@@ -110,11 +116,13 @@ begin
     )
     port map(
       clk_read => clk_master,
+      rst_read_n => rst_master_n,
       read_ready => master_m2s.write.b.ready,
       read_valid => master_s2m.write.b.valid,
       read_data => master_s2m.write.b.resp,
       --
       clk_write => clk_slave,
+      rst_write_n => rst_slave_n,
       write_ready => slave_m2s.write.b.ready,
       write_valid => slave_s2m.write.b.valid,
       write_data => slave_s2m.write.b.resp
@@ -137,11 +145,13 @@ begin
       )
       port map(
         clk_read => clk_slave,
+        rst_read_n => rst_slave_n,
         read_ready => slave_s2m.read.ar.ready,
         read_valid => slave_m2s.read.ar.valid,
         read_data => read_data,
         --
         clk_write => clk_master,
+        rst_write_n => rst_master_n,
         write_ready => master_s2m.read.ar.ready,
         write_valid => master_m2s.read.ar.valid,
         write_data => write_data
@@ -167,11 +177,13 @@ begin
       )
       port map(
         clk_read => clk_master,
+        rst_read_n => rst_master_n,
         read_ready => master_m2s.read.r.ready,
         read_valid => master_s2m.read.r.valid,
         read_data => read_data,
         --
         clk_write => clk_slave,
+        rst_write_n => rst_slave_n,
         write_ready => slave_m2s.read.r.ready,
         write_valid => slave_s2m.read.r.valid,
         write_data => write_data

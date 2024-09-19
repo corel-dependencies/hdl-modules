@@ -33,6 +33,7 @@ end entity;
 
 architecture tb of tb_axi_to_axi_lite is
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic;
   constant clk_period : time := 10 ns;
 
   signal axi_m2s : axi_m2s_t;
@@ -62,6 +63,7 @@ begin
 
   test_runner_watchdog(runner, 10 ms);
   clk <= not clk after clk_period / 2;
+  rst_n <= '0', '1' after 2*clk_period;
 
 
   ------------------------------------------------------------------------------
@@ -76,6 +78,8 @@ begin
     test_runner_setup(runner, runner_cfg);
     rnd.InitSeed(rnd'instance_name);
     buf := allocate(memory, num_words * bytes_per_word);
+
+    wait until rst_n;
 
     if run("read_write_data") then
       for i in 0 to num_words - 1 loop
@@ -134,6 +138,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
 
       axi_m2s => axi_m2s,
       axi_s2m => axi_s2m,

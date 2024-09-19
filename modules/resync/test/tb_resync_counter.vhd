@@ -32,15 +32,18 @@ architecture tb of tb_resync_counter is
     to_int(pipeline_output) * clk_out_period;
 
   signal clk_in                  : std_logic                      := '1';
+  signal rst_in_n                  : std_logic                      := '1';
   signal clk_out                 : std_logic                      := '0';
+  signal rst_out_n                 : std_logic                      := '0';
   signal counter_in, counter_out : unsigned(8 - 1 downto 0) := (others => '0');
   constant counter_max : integer := 2 ** counter_in'length - 1;
 begin
 
   test_runner_watchdog(runner, 10 ms);
   clk_in  <= not clk_in  after clk_in_period/2;
+  rst_in_n <= '0', '1' after 2*clk_in_period;
   clk_out <= not clk_out after clk_out_period/2;
-
+  rst_out_n <= '0', '1' after 2*clk_out_period;
 
   ------------------------------------------------------------------------------
   main : process
@@ -57,6 +60,8 @@ begin
 
   begin
     test_runner_setup(runner, runner_cfg);
+
+    wait on clk_in until rst_in_n and rst_out_n;
 
     loop_twice_to_wrap_counter : for i in 1 to 2 loop
       count_up : for value in 0 to counter_max loop
@@ -79,9 +84,11 @@ begin
       pipeline_output => pipeline_output)
     port map (
       clk_in     => clk_in,
+      rst_in_n => rst_in_n,
       counter_in => counter_in,
 
       clk_out     => clk_out,
+      rst_out_n => rst_out_n,
       counter_out => counter_out);
 
 end architecture;

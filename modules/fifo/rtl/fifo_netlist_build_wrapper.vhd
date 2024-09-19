@@ -47,6 +47,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => '1',
       clk_read => clk_read,
       clk_write => clk_write,
       --

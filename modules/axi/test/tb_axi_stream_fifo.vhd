@@ -38,6 +38,8 @@ architecture tb of tb_axi_stream_fifo is
   constant clk_slow_period : time := 7 ns;
 
   signal clk_input, clk_output : std_logic := '0';
+  signal rst_input_n : std_ulogic;
+  signal rst_output_n : std_ulogic;
 
   signal input_m2s, output_m2s : axi_stream_m2s_t := axi_stream_m2s_init;
   signal input_s2m, output_s2m : axi_stream_s2m_t := axi_stream_s2m_init;
@@ -48,10 +50,14 @@ begin
 
   clk_input_gen : if asynchronous generate
     clk_input <= not clk_input after clk_slow_period / 2;
+    rst_input_n <= '0', '1' after 2*clk_slow_period;
     clk_output <= not clk_output after clk_fast_period / 2;
+    rst_output_n <= '0', '1' after 2*clk_fast_period;
   else generate
     clk_input <= not clk_input after clk_fast_period / 2;
+    rst_input_n <= '0', '1' after 2*clk_fast_period;
     clk_output <= not clk_output after clk_fast_period / 2;
+    rst_output_n <= '0', '1' after 2*clk_fast_period;
   end generate;
 
   ------------------------------------------------------------------------------
@@ -62,6 +68,9 @@ begin
   begin
     test_runner_setup(runner, runner_cfg);
     rnd.InitSeed(rnd'instance_name);
+
+    wait on clk_input until rst_input_n;
+    wait on clk_output until rst_output_n;
 
     if run("test_single_transaction") then
       data := rnd.RandSlv(data'length);
@@ -94,6 +103,7 @@ begin
     )
     port map (
       clk => clk_input,
+      rst_n => rst_input_n,
       --
       input_m2s => input_m2s,
       input_s2m => input_s2m,
@@ -101,7 +111,8 @@ begin
       output_m2s => output_m2s,
       output_s2m => output_s2m,
       --
-      clk_output => clk_output
+      clk_output => clk_output,
+      rst_output_n => rst_output_n
     );
 
 end architecture;

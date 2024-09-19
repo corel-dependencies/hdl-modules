@@ -42,13 +42,16 @@ architecture tb of tb_resync_slv_level is
   constant two : std_logic_vector(one'range) := x"2222";
 
   signal clk_in, clk_out : std_logic := '0';
+  signal rst_in_n, rst_out_n : std_logic;
   signal data_in, data_out : std_logic_vector(one'range) := one;
 
 begin
 
   test_runner_watchdog(runner, 10 ms);
   clk_out <= not clk_out after clk_out_period / 2;
+  rst_out_n <= '0', '1' after 2*clk_out_period;
   clk_in <= not clk_in after clock_period_medium / 2;
+  rst_in_n <= '0', '1' after 2*clock_period_medium;
 
 
   ------------------------------------------------------------------------------
@@ -83,6 +86,8 @@ begin
 
   begin
     test_runner_setup(runner, runner_cfg);
+
+    wait on clk_out until rst_out_n and rst_in_n;
 
     -- Default value
     check_equal(data_out, one);
@@ -122,9 +127,11 @@ begin
       )
       port map (
         clk_in => clk_in,
+        rst_in_n => rst_in_n,
         data_in => data_in,
 
         clk_out => clk_out,
+        rst_out_n => rst_out_n,
         data_out => data_out
       );
 
@@ -138,9 +145,11 @@ begin
       )
       port map (
         clk_in => clk_in,
+        rst_in_n => rst_in_n,
         data_in => data_in,
 
         clk_out => clk_out,
+        rst_out_n => rst_out_n,
         data_out => data_out
       );
 

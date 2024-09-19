@@ -44,6 +44,7 @@ architecture tb of tb_handshake_bfm is
   );
 
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic;
   constant clk_period : time := 10 ns;
 
   signal input_ready, input_valid, result_ready, result_valid, input_last, result_last : std_logic
@@ -60,6 +61,7 @@ begin
 
   test_runner_watchdog(runner, 2 ms);
   clk <= not clk after clk_period / 2;
+  rst_n <= '0', '1' after 2*clk_period;
 
 
   ------------------------------------------------------------------------------
@@ -74,7 +76,7 @@ begin
 
     rnd.InitSeed(rnd'instance_name);
 
-    wait until rising_edge(clk);
+    wait until rising_edge(clk) and rst_n = '1';
 
     if run("test_full_master_throughput") then
       input_is_valid <= '1';
@@ -236,6 +238,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
       --
       input_ready => input_ready,
       input_valid => input_valid,

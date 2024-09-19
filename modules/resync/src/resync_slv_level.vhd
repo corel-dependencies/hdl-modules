@@ -28,10 +28,12 @@ entity resync_slv_level is
   );
   port (
     clk_in : in std_logic := '-';
+    rst_in_n : in std_ulogic := '-';
     data_in : in std_logic_vector(default_value'range);
 
     clk_out : in std_logic;
-    data_out : out std_logic_vector(default_value'range) := default_value
+    rst_out_n : in std_ulogic;
+    data_out : out std_logic_vector(default_value'range)
   );
 end entity;
 
@@ -50,9 +52,11 @@ begin
       )
       port map (
         clk_in => clk_in,
+        rst_in_n => rst_in_n,
         data_in => data_in(i),
 
         clk_out => clk_out,
+        rst_out_n => rst_out_n,
         data_out => data_out(i)
       );
 

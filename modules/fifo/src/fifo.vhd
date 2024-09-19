@@ -19,52 +19,53 @@ use common.types_pkg.all;
 library math;
 use math.math_pkg.all;
 
-
 entity fifo is
   generic (
-    width : positive;
-    depth : positive;
+    width              : positive;
+    depth              : positive;
     -- Changing these levels from default value will increase logic footprint
-    almost_full_level : integer range 0 to depth := depth;
+    almost_full_level  : integer range 0 to depth := depth;
     almost_empty_level : integer range 0 to depth := 0;
     -- Set to true in order to use read_last and write_last
-    enable_last : boolean := false;
+    enable_last        : boolean                  := false;
     -- If enabled, read_valid will not be asserted until a full packet is available in
     -- FIFO. I.e. when write_last has been received. Must set enable_last as well to use this.
-    enable_packet_mode : boolean := false;
+    enable_packet_mode : boolean                  := false;
     -- Set to true in order to use the drop_packet port. Must set enable_packet_mode as
     -- well to use this.
-    enable_drop_packet : boolean := false;
-    ram_type : ram_style_t := ram_style_auto
-  );
+    enable_drop_packet : boolean                  := false;
+    ram_type           : ram_style_t              := ram_style_auto;
+    microsemi_flash_device          : boolean                  := true
+    );
   port (
-    clk : in std_logic;
+    clk   : in  std_logic;
+    rst_n : in  std_ulogic;
     -- When packet_mode is enabled, this value will still reflect the number of words that are in
     -- the FIFO RAM. This is not necessarily the same as the number of words that can be read, in
     -- this mode.
     level : out integer range 0 to depth := 0;
 
-    read_ready : in std_logic;
+    read_ready   : in  std_logic;
     -- '1' if FIFO is not empty
-    read_valid : out std_logic := '0';
-    read_data : out std_logic_vector(width - 1 downto 0) := (others => '0');
+    read_valid   : out std_logic;
+    read_data    : out std_logic_vector(width - 1 downto 0);
     -- Must set enable_last generic in order to use this
-    read_last : out std_logic := '0';
+    read_last    : out std_logic;
     -- '1' if there are almost_empty_level or fewer words available to read
-    almost_empty : out std_logic := '1';
+    almost_empty : out std_logic;
 
     -- '1' if FIFO is not full
-    write_ready : out std_logic := '1';
-    write_valid : in std_logic;
-    write_data : in std_logic_vector(width - 1 downto 0);
+    write_ready : out std_logic;
+    write_valid : in  std_logic;
+    write_data  : in  std_logic_vector(width - 1 downto 0);
     -- Must set enable_last generic in order to use this
-    write_last : in std_logic := '-';
+    write_last  : in  std_logic := '-';
     -- '1' if there are almost_full_level or more words available in the FIFO
-    almost_full : out std_logic := '0';
+    almost_full : out std_logic;
     -- Drop the current packet (all words that have been writen since the previous write_last).
     -- Must set enable_drop_packet generic in order to use this.
-    drop_packet : in std_logic := '0'
-  );
+    drop_packet : in  std_logic := '0'
+    );
 end entity;
 
 architecture a of fifo is
@@ -72,16 +73,16 @@ architecture a of fifo is
   -- Need one extra bit in the addresses to be able to make the distinction if the FIFO
   -- is full or empty (where the addresses would otherwise be equal).
   subtype fifo_addr_t is unsigned(num_bits_needed(2 * depth - 1) - 1 downto 0);
-  signal read_addr_next, read_addr : fifo_addr_t := (others => '0');
+  signal read_addr_next, read_addr : fifo_addr_t;
   signal write_addr_next, write_addr, write_addr_next_if_not_drop, write_addr_start_of_packet :
-    fifo_addr_t := (others => '0');
+    fifo_addr_t;
 
   -- The part of the address that actually goes to the BRAM address port
   subtype bram_addr_range is integer range num_bits_needed(depth - 1) - 1 downto 0;
 
-  signal num_lasts_in_fifo : integer range 0 to depth := 0;
+  signal num_lasts_in_fifo : integer range 0 to depth;
 
-  signal should_drop_packet : std_logic := '0';
+  signal should_drop_packet : std_logic;
 
 begin
 
@@ -92,14 +93,11 @@ begin
   assert enable_packet_mode or (not enable_drop_packet)
     report "Must set enable_packet_mode for drop packet support" severity failure;
 
-  -- These flags will update one cycle after the write/read that puts them over/below the line.
-  -- Except for the fringe cases:
-  --
-  -- When almost_full_level is 'depth' and a read puts it below the line there will be a two
-  -- cycle latency. For a write that puts it above the line there is always one cycle latency.
-  --
-  -- When almost_empty_level is zero and a write puts it over the line there will be a two
-  -- cycle latency. For a read that puts it below the line there is always one cycle latency.
+  -- The flags will update one cycle after the write/read that puts them over/below the line.
+  -- Except for almost_empty when almost_empty_level is zero.
+  -- In that case, when a write puts it over the line there will be a two cycle latency, since
+  -- that write must propagate into the RAM before the data is valid to read.
+  -- For a read that puts it below the line there is always one cycle latency.
 
   assign_almost_full : if almost_full_level = depth generate
     almost_full <= not write_ready;
@@ -115,57 +113,68 @@ begin
 
 
   ------------------------------------------------------------------------------
-  status : process
-    variable num_lasts_in_fifo_next : integer range 0 to depth := 0;
+  status : process (clk, rst_n) is
+    variable num_lasts_in_fifo_next : integer range 0 to depth;
   begin
-    wait until rising_edge(clk);
+    if not rst_n then
+      level                      <= 0;
+      write_addr                 <= (others => '0');
+      read_addr                  <= (others => '0');
+      write_addr_start_of_packet <= (others => '0');
+      num_lasts_in_fifo          <= 0;
+      num_lasts_in_fifo_next     := 0;
+      write_ready                <= '1';
+      read_valid                 <= '0';
+    elsif rising_edge(clk) then
 
-    if enable_packet_mode then
-      num_lasts_in_fifo_next := num_lasts_in_fifo
-        + to_int(write_ready and write_valid and write_last and not should_drop_packet)
-        - to_int(read_ready and read_valid and read_last);
+      if enable_packet_mode then
+        num_lasts_in_fifo_next := num_lasts_in_fifo
+                                  + to_int(write_ready and write_valid and write_last and not should_drop_packet)
+                                  - to_int(read_ready and read_valid and read_last);
 
-      -- We look at num_lasts_in_fifo_next since we need to update read_valid the same cycle when
-      -- the read happens.
-      -- We also look at num_lasts_in_fifo since a write needs an additional clock
-      -- cycle to propagate into the RAM. This is really only needed when the FIFO is empty and
-      -- a packet of length one is written. With this condition, there will be a two cycle latency
-      -- from write_last being written to read_valid being asserted.
-      read_valid <= to_sl(num_lasts_in_fifo /= 0 and num_lasts_in_fifo_next /= 0);
-      num_lasts_in_fifo <= num_lasts_in_fifo_next;
-    else
-      read_valid <= to_sl(read_addr_next /= write_addr);
-    end if;
-
-    -- Note that write_ready looks at the write_addr_next that will be used if there is
-    -- no packet drop, even when drop_packet functionality is enabled. This is done to ease the
-    -- timing of write_ready which is often critical.
-    -- There is a functional difference only in the special case when the FIFO
-    -- goes full in the same cycle as drop_packet is sent. In that case, write_ready will be low
-    -- for one cycle and then go high the next.
-    --
-    -- Similarly write_ready looks at read_addr rather than read_addr_next, which eases the timing
-    -- of read_ready. There is a function difference when the FIFO is full and a read performed
-    -- makes the FIFO ready for another write. In this case, write_ready will be low
-    -- for one extra cycle after the read occurs, and then go high the next.
-    write_ready <= to_sl(
-      read_addr(bram_addr_range) /= write_addr_next_if_not_drop(bram_addr_range)
-      or read_addr(read_addr'high) =  write_addr_next_if_not_drop(write_addr_next'high));
-
-    if enable_drop_packet then
-      if write_ready and write_valid and write_last and not should_drop_packet then
-        write_addr_start_of_packet <= write_addr_next;
+        -- We look at num_lasts_in_fifo_next since we need to update read_valid the same cycle when
+        -- the read happens.
+        -- We also look at num_lasts_in_fifo since a write needs an additional clock
+        -- cycle to propagate into the RAM. This is really only needed when the FIFO is empty and
+        -- a packet of length one is written. With this condition, there will be a two cycle latency
+        -- from write_last being written to read_valid being asserted.
+        read_valid        <= to_sl(num_lasts_in_fifo /= 0 and num_lasts_in_fifo_next /= 0);
+        num_lasts_in_fifo <= num_lasts_in_fifo_next;
+      else
+        read_valid <= to_sl(read_addr_next /= write_addr);
       end if;
-    end if;
 
-    -- These signals however must have the updated values to be valid for the next cycle.
-    write_addr <= write_addr_next;
-    read_addr <= read_addr_next;
-    -- The level count shall always be correct, and hence uses the updated values. Note that this
-    -- can create some wonky situations, e.g. when level read as 1023 for a 1024 deep FIFO
-    -- but write_ready is false.
-    -- Also in packet_mode, the level is incremented for words that might be dropped later.
-    level <= to_integer(write_addr_next - read_addr_next) mod (2 * depth);
+      -- Note that write_ready looks at the write_addr_next that will be used if there is
+      -- no packet drop, even when drop_packet functionality is enabled. This is done to ease the
+      -- timing of write_ready which is often critical.
+      -- There is a functional difference only in the special case when the FIFO
+      -- goes full in the same cycle as drop_packet is sent. In that case, write_ready will be low
+      -- for one cycle and then go high the next.
+      --
+      -- Similarly write_ready looks at read_addr rather than read_addr_next, which eases the timing
+      -- of read_ready. There is a function difference when the FIFO is full and a read performed
+      -- makes the FIFO ready for another write. In this case, write_ready will be low
+      -- for one extra cycle after the read occurs, and then go high the next.
+      write_ready <= to_sl(
+        read_addr(bram_addr_range) /= write_addr_next_if_not_drop(bram_addr_range)
+        or read_addr(read_addr'high) = write_addr_next_if_not_drop(write_addr_next'high));
+
+      if enable_drop_packet then
+        if write_ready and write_valid and write_last and not should_drop_packet then
+          write_addr_start_of_packet <= write_addr_next;
+        end if;
+      end if;
+
+      -- These signals however must have the updated values to be valid for the next cycle.
+      write_addr <= write_addr_next;
+      read_addr  <= read_addr_next;
+      -- The level count shall always be correct, and hence uses the updated values. Note that this
+      -- can create some wonky situations, e.g. when level read as 1023 for a 1024 deep FIFO
+      -- but write_ready is false.
+      -- Also in packet_mode, the level is incremented for words that might be dropped later.
+      level      <= to_integer(write_addr_next - read_addr_next) mod (2 * depth);
+
+    end if;
   end process;
 
   should_drop_packet <= to_sl(enable_drop_packet) and drop_packet;
@@ -182,45 +191,77 @@ begin
     subtype word_t is std_logic_vector(memory_word_width - 1 downto 0);
     type mem_t is array (integer range <>) of word_t;
 
-    signal mem : mem_t(0 to depth - 1) := (others => (others => '0'));
+    signal mem                 : mem_t(0 to depth - 1);
     attribute ram_style of mem : signal is to_attribute(ram_type);
 
-    signal memory_read_data, memory_write_data : word_t := (others => '0');
+    signal memory_read_data, memory_write_data : word_t;
   begin
 
-    read_data <= memory_read_data(read_data'range);
+    read_data                           <= memory_read_data(read_data'range);
     memory_write_data(write_data'range) <= write_data;
 
     assign_data : if enable_last generate
-      read_last <= memory_read_data(memory_read_data'high);
+      read_last                                 <= memory_read_data(memory_read_data'high);
       memory_write_data(memory_write_data'high) <= write_last;
+    else generate
+      read_last <= '0';
     end generate;
 
-    memory : process
-    begin
-      wait until rising_edge(clk);
+    memory_reset_if : if microsemi_flash_device generate
+      -- Possible on Microsemi IGLOO, ProASIC3, Fusion.
 
-      memory_read_data <= mem(to_integer(read_addr_next) mod depth);
+      memory : process (clk, rst_n) is
+      begin
+        if not rst_n then
+          memory_read_data <= (others => '0');
+          mem              <= (others => (others => '0'));
+        elsif rising_edge(clk) then
 
-      if write_ready and write_valid then
-        mem(to_integer(write_addr) mod depth) <= memory_write_data;
-      end if;
-    end process;
+          memory_read_data <= mem(to_integer(read_addr_next) mod depth);
+
+          if write_ready and write_valid then
+            mem(to_integer(write_addr) mod depth) <= memory_write_data;
+          end if;
+
+        end if;
+      end process;
+
+    else generate
+
+      memory : process (clk, rst_n) is
+      begin
+        if not rst_n then
+          memory_read_data <= (others => '0');
+        elsif rising_edge(clk) then
+
+          memory_read_data <= mem(to_integer(read_addr_next) mod depth);
+
+          if write_ready and write_valid then
+            mem(to_integer(write_addr) mod depth) <= memory_write_data;
+          end if;
+
+        end if;
+      end process;
+
+    end generate memory_reset_if;
   end block;
 
 
   ------------------------------------------------------------------------------
   psl_block : block
     signal first_cycle : std_logic := '1';
-    signal fill_level : unsigned(read_addr'range);
+    signal fill_level  : unsigned(read_addr'range);
   begin
 
     fill_level <= write_addr - read_addr;
 
-    ctrl : process
+    ctrl : process (clk, rst_n) is
     begin
-      wait until rising_edge(clk);
-      first_cycle <= '0';
+      if not rst_n then
+        first_cycle <= '1';
+      elsif rising_edge(clk) then
+        first_cycle <= '0';
+      end if;
     end process;
 
     -- psl default clock is rising_edge(clk);
@@ -270,10 +311,10 @@ begin
     -- check below is only done if the depth is 4.
     gen_if_depth_4 : if depth = 4 generate
     begin
-      -- Check that write_ready is deasserted after 4 consecutive writes
-      -- without reads.
-      -- psl assert always
-      --       {(write_valid and not read_ready)}[*4] |=> (not write_ready);
+    -- Check that write_ready is deasserted after 4 consecutive writes
+    -- without reads.
+    -- psl assert always
+    --       {(write_valid and not read_ready)}[*4] |=> (not write_ready);
     end generate;
   end block;
 

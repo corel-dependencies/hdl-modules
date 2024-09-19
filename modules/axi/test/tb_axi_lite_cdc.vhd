@@ -42,6 +42,7 @@ architecture tb of tb_axi_lite_cdc is
   constant clk_slow_period : time := 7 ns;
 
   signal clk_master, clk_slave : std_logic := '0';
+  signal rst_master_n, rst_slave_n : std_logic := '0';
 
   signal master_m2s, slave_m2s : axi_lite_m2s_t := axi_lite_m2s_init;
   signal master_s2m, slave_s2m : axi_lite_s2m_t := axi_lite_s2m_init;
@@ -70,14 +71,18 @@ begin
 
   clk_master_gen : if master_clk_fast generate
     clk_master <= not clk_master after clk_fast_period / 2;
+    rst_master_n <= '0', '1' after 2*clk_fast_period;
   else generate
     clk_master <= not clk_master after clk_slow_period / 2;
+    rst_master_n <= '0', '1' after 2*clk_slow_period;
   end generate;
 
   clk_slave_gen : if slave_clk_fast generate
     clk_slave <= not clk_slave after clk_fast_period / 2;
+    rst_slave_n <= '0', '1' after 2*clk_fast_period;
   else generate
     clk_slave <= not clk_slave after clk_slow_period / 2;
+    rst_slave_n <= '0', '1' after 2*clk_slow_period;
   end generate;
 
 
@@ -90,6 +95,8 @@ begin
   begin
     test_runner_setup(runner, runner_cfg);
     rnd.InitSeed(rnd'instance_name);
+
+    wait on clk_master until rst_master_n and rst_slave_n;
 
     buf := allocate(memory, 4 * num_words);
 
@@ -154,10 +161,12 @@ begin
     )
     port map (
       clk_master => clk_master,
+      rst_master_n => rst_master_n,
       master_m2s => master_m2s,
       master_s2m => master_s2m,
 
       clk_slave => clk_slave,
+      rst_slave_n => rst_slave_n,
       slave_m2s => slave_m2s,
       slave_s2m => slave_s2m
     );

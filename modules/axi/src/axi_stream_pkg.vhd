@@ -23,8 +23,8 @@ package axi_stream_pkg is
 
   -- Data bus width in bytes, 128b seems reasonable at the moment.
   constant axi_stream_data_sz : positive := 128;
+  constant axi_stream_user_sz : positive := 128;
   -- Integer multiple of the width of the interface in bytes.
-  constant axi_stream_user_sz : positive := axi_stream_data_sz / 8;
   constant axi_stream_strb_sz : positive := axi_stream_data_sz / 8;
   constant axi_stream_keep_sz : positive := axi_stream_data_sz / 8;
 

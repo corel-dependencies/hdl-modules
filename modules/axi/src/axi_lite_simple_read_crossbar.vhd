@@ -23,26 +23,24 @@ entity axi_lite_simple_read_crossbar is
   );
   port(
     clk : in std_logic;
+    rst_n : in std_ulogic;
     --
     input_ports_m2s : in axi_lite_read_m2s_vec_t(0 to num_inputs - 1) :=
       (others => axi_lite_read_m2s_init);
-    input_ports_s2m : out axi_lite_read_s2m_vec_t(0 to num_inputs - 1) :=
-      (others => axi_lite_read_s2m_init);
+    input_ports_s2m : out axi_lite_read_s2m_vec_t(0 to num_inputs - 1);
     --
-    output_m2s : out axi_lite_read_m2s_t := axi_lite_read_m2s_init;
+    output_m2s : out axi_lite_read_m2s_t;
     output_s2m : in axi_lite_read_s2m_t := axi_lite_read_s2m_init
   );
 end entity;
 
 architecture a of axi_lite_simple_read_crossbar is
 
-  signal input_ports_axi_m2s : axi_read_m2s_vec_t(0 to num_inputs - 1) :=
-    (others => axi_read_m2s_init);
-  signal input_ports_axi_s2m : axi_read_s2m_vec_t(0 to num_inputs - 1) :=
-    (others => axi_read_s2m_init);
+  signal input_ports_axi_m2s : axi_read_m2s_vec_t(0 to num_inputs - 1);
+  signal input_ports_axi_s2m : axi_read_s2m_vec_t(0 to num_inputs - 1);
 
-  signal output_axi_m2s : axi_read_m2s_t := axi_read_m2s_init;
-  signal output_axi_s2m : axi_read_s2m_t := axi_read_s2m_init;
+  signal output_axi_m2s : axi_read_m2s_t;
+  signal output_axi_s2m : axi_read_s2m_t;
 
 begin
 
@@ -85,6 +83,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
       --
       input_ports_m2s => input_ports_axi_m2s,
       input_ports_s2m => input_ports_axi_s2m,

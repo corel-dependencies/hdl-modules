@@ -29,14 +29,16 @@ entity axi_stream_fifo is
   );
   port (
     clk : in std_logic;
+    rst_n : in std_ulogic;
     --
     input_m2s : in axi_stream_m2s_t;
-    input_s2m : out axi_stream_s2m_t := axi_stream_s2m_init;
+    input_s2m : out axi_stream_s2m_t;
     --
-    output_m2s : out axi_stream_m2s_t := axi_stream_m2s_init;
+    output_m2s : out axi_stream_m2s_t;
     output_s2m : in axi_stream_s2m_t;
-    -- Only need to assign the clock if generic asynchronous is "True"
-    clk_output : in std_logic := '0'
+    -- Only need to assign the clock and reset if generic asynchronous is "True"
+    clk_output : in std_logic := '0';
+    rst_output_n : in std_ulogic := '0'
   );
 end entity;
 
@@ -45,7 +47,7 @@ architecture a of axi_stream_fifo is
   constant bus_width : integer := axi_stream_m2s_sz(data_width, user_width);
 
   signal write_data, read_data : std_logic_vector(bus_width - 1 downto 0);
-  signal read_valid : std_logic := '0';
+  signal read_valid : std_logic;
 
 begin
 
@@ -69,8 +71,11 @@ begin
     )
     port map(
       clk => clk,
+      rst_n => rst_n,
       clk_read => clk_output,
+      rst_read_n => rst_output_n,
       clk_write => clk,
+      rst_write_n => rst_n,
       --
       read_ready => output_s2m.ready,
       read_valid => read_valid,

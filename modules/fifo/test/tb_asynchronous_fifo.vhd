@@ -43,6 +43,7 @@ architecture tb of tb_asynchronous_fifo is
   constant width : integer := 8;
 
   signal clk_read, clk_write : std_logic := '0';
+  signal rst_read_n, rst_write_n : std_logic;
 
   signal read_ready, read_valid, read_last : std_logic := '0';
   signal write_ready, write_valid, write_last : std_logic := '0';
@@ -81,10 +82,14 @@ begin
 
   clocks : if read_clock_is_faster generate
     clk_read  <= not clk_read after 2 ns;
+    rst_read_n  <= '0', '1' after 4 ns;
     clk_write <= not clk_write after 3 ns;
+    rst_write_n  <= '0', '1' after 6 ns;
   else  generate
     clk_read  <= not clk_read after 3 ns;
+    rst_read_n  <= '0', '1' after 6 ns;
     clk_write <= not clk_write after 2 ns;
+    rst_write_n  <= '0', '1' after 4 ns;
   end generate;
 
 
@@ -180,6 +185,11 @@ begin
     disable(get_logger("write_master:rule 4"), warning);
     -- Some tests leave data unread in the FIFO
     disable(get_logger("read_slave:rule 9"), error);
+
+    -- disable not unknown checks, that trigger on don't care as well.
+    disable(get_logger("read_slave:rule 6"), error);   -- tlast
+
+    wait on clk_write until rst_write_n and rst_read_n;
 
     if run("test_init_state") then
       check_equal(read_valid, '0');
@@ -393,6 +403,7 @@ begin
     variable read_transaction : std_logic := '0';
   begin
     wait until rising_edge(clk_read);
+    wait on clk_read until rst_read_n;
 
     -- If there was a read transaction last clock cycle, and we now want to read but there is no data available.
     if read_transaction and read_ready and not read_valid then
@@ -408,6 +419,7 @@ begin
     variable write_transaction : std_logic := '0';
   begin
     wait until rising_edge(clk_write);
+    wait on clk_write until rst_write_n;
 
     -- If there was a write transaction last clock cycle, and we now want to write but the fifo is full.
     if write_transaction and write_valid and not write_ready then
@@ -458,6 +470,7 @@ begin
     )
     port map (
       clk_read => clk_read,
+      rst_read_n => rst_read_n,
       read_ready   => read_ready,
       read_valid   => read_valid,
       read_data    => read_data,
@@ -467,6 +480,7 @@ begin
       read_almost_empty => read_almost_empty,
       --
       clk_write => clk_write,
+      rst_write_n => rst_write_n,
       write_ready => write_ready,
       write_valid => write_valid,
       write_data  => write_data,

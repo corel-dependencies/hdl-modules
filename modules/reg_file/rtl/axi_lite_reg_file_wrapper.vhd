@@ -42,21 +42,21 @@ end entity;
 architecture a of axi_lite_reg_file_wrapper is
 
   constant regs : reg_definition_vec_t(regs_up'range) := (
-    (idx=>0, reg_type=>r),
-    (idx=>1, reg_type=>w),
-    (idx=>2, reg_type=>r_w),
-    (idx=>3, reg_type=>wpulse),
-    (idx=>4, reg_type=>r_wpulse),
-    (idx=>5, reg_type=>r),
-    (idx=>6, reg_type=>w),
-    (idx=>7, reg_type=>r_w),
-    (idx=>8, reg_type=>wpulse),
-    (idx=>9, reg_type=>r_wpulse),
-    (idx=>10, reg_type=>r),
-    (idx=>11, reg_type=>w),
-    (idx=>12, reg_type=>r_w),
-    (idx=>13, reg_type=>wpulse),
-    (idx=>14, reg_type=>r_wpulse)
+    (idx=>0, reg_type=>r, atomic_lock => 0),
+    (idx=>1, reg_type=>w, atomic_lock => 0),
+    (idx=>2, reg_type=>r_w, atomic_lock => 0),
+    (idx=>3, reg_type=>wpulse, atomic_lock => 0),
+    (idx=>4, reg_type=>r_wpulse, atomic_lock => 0),
+    (idx=>5, reg_type=>r, atomic_lock => 0),
+    (idx=>6, reg_type=>w, atomic_lock => 0),
+    (idx=>7, reg_type=>r_w, atomic_lock => 0),
+    (idx=>8, reg_type=>wpulse, atomic_lock => 0),
+    (idx=>9, reg_type=>r_wpulse, atomic_lock => 0),
+    (idx=>10, reg_type=>r, atomic_lock => 0),
+    (idx=>11, reg_type=>w, atomic_lock => 0),
+    (idx=>12, reg_type=>r_w, atomic_lock => 0),
+    (idx=>13, reg_type=>wpulse, atomic_lock => 0),
+    (idx=>14, reg_type=>r_wpulse, atomic_lock => 0)
   );
 
 begin
@@ -67,6 +67,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => '1',
       --
       axi_lite_m2s => axi_lite_m2s,
       axi_lite_s2m => axi_lite_s2m,

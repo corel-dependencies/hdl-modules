@@ -22,12 +22,14 @@ end entity;
 
 architecture tb of tb_resync_slv_level_on_signal is
   signal clk_out : std_logic := '0';
+  signal rst_out_n : std_ulogic;
   signal data_in, data_out : std_logic_vector(16-1 downto 0) := (others => '0');
   signal sample_value : std_logic := '0';
 begin
 
   test_runner_watchdog(runner, 10 ms);
   clk_out <= not clk_out after 2 ns;
+  rst_out_n <= '0', '1' after 4 ns;
 
 
   ------------------------------------------------------------------------------
@@ -42,6 +44,8 @@ begin
     constant value : std_logic_vector(data_in'range) := x"BAAD";
   begin
     test_runner_setup(runner, runner_cfg);
+
+    wait until rst_out_n;
 
     -- Module functionality is very simple. This is basically a connectivity test.
 
@@ -76,6 +80,7 @@ begin
       data_in => data_in,
 
       clk_out => clk_out,
+      rst_out_n => rst_out_n,
       sample_value => sample_value,
       data_out => data_out
     );

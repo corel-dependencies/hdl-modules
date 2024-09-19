@@ -26,31 +26,37 @@ use common.types_pkg.all;
 entity resync_pulse is
   generic (
     assert_false_on_pulse_overload : boolean := true
-  );
+    );
   port (
-    clk_in : in std_logic;
+    clk_in   : in std_logic;
+    rst_in_n : in std_ulogic;
     pulse_in : in std_logic;
 
-    clk_out : in std_logic;
-    pulse_out : out std_logic := '0'
-  );
+    clk_out   : in  std_logic;
+    rst_out_n : in  std_ulogic;
+    pulse_out : out std_logic
+    );
 end entity;
 
 architecture a of resync_pulse is
-  signal level_in, level_out, level_out_p1, level_out_feedback : std_logic := '0';
+  signal level_in, level_out, level_out_p1, level_out_feedback : std_logic;
 begin
 
   ------------------------------------------------------------------------------
-  input : process
+  input : process (clk_in, rst_in_n) is
   begin
-    wait until rising_edge(clk_in);
+    if not rst_in_n then
+      level_in <= '0';
+    elsif rising_edge(clk_in) then
 
-    if pulse_in = '1' then
-      if level_in = level_out_feedback then
-        level_in <= not level_in;
-      elsif assert_false_on_pulse_overload then
-        assert false report "Pulse overload";
+      if pulse_in = '1' then
+        if level_in = level_out_feedback then
+          level_in <= not level_in;
+        elsif assert_false_on_pulse_overload then
+          assert false report "Pulse overload";
+        end if;
       end if;
+
     end if;
   end process;
 
@@ -60,14 +66,16 @@ begin
     generic map (
       -- Value is drive by a FF so this is not needed
       enable_input_register => false
-    )
+      )
     port map (
-      clk_in => clk_in,
-      data_in => level_in,
+      clk_in   => clk_in,
+      rst_in_n => rst_in_n,
+      data_in  => level_in,
 
-      clk_out => clk_out,
-      data_out => level_out
-    );
+      clk_out   => clk_out,
+      rst_out_n => rst_out_n,
+      data_out  => level_out
+      );
 
 
   ------------------------------------------------------------------------------
@@ -75,22 +83,28 @@ begin
     generic map (
       -- Value is drive by a FF so this is not needed
       enable_input_register => false
-    )
+      )
     port map (
-      clk_in => clk_out,
-      data_in => level_out,
+      clk_in   => clk_out,
+      rst_in_n => rst_in_n,
+      data_in  => level_out,
 
-      clk_out => clk_in,
-      data_out => level_out_feedback
-    );
+      clk_out   => clk_in,
+      rst_out_n => rst_out_n,
+      data_out  => level_out_feedback
+      );
 
 
   ------------------------------------------------------------------------------
-  output : process
+  output : process (clk_out, rst_out_n) is
   begin
-    wait until rising_edge(clk_out);
-    pulse_out <= to_sl(level_out /= level_out_p1);
-    level_out_p1 <= level_out;
+    if not rst_out_n then
+      pulse_out    <= '0';
+      level_out_p1 <= '0';
+    elsif rising_edge(clk_out) then
+      pulse_out    <= to_sl(level_out /= level_out_p1);
+      level_out_p1 <= level_out;
+    end if;
   end process;
 
 end architecture;

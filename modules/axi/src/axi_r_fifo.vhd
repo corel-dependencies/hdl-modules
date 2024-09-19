@@ -31,17 +31,19 @@ entity axi_r_fifo is
   );
   port (
     clk : in std_logic;
+    rst_n : in std_ulogic;
     --
     input_m2s : in axi_m2s_r_t;
-    input_s2m : out axi_s2m_r_t := axi_s2m_r_init;
+    input_s2m : out axi_s2m_r_t;
     --
-    output_m2s : out axi_m2s_r_t := axi_m2s_r_init;
+    output_m2s : out axi_m2s_r_t;
     output_s2m : in axi_s2m_r_t;
     -- Level of the FIFO. If this is an asynchronous FIFO, this value is on the "output" side.
-    output_level : out integer range 0 to depth := 0;
+    output_level : out integer range 0 to depth;
     --
-    -- Only need to assign the clock if generic asynchronous is "True"
-    clk_input : in std_logic := '0'
+    -- Only need to assign the clock and reset if generic asynchronous is "True"
+    clk_input : in std_logic := '0';
+    rst_input_n : in std_ulogic := '0'
   );
 end entity;
 
@@ -57,7 +59,7 @@ begin
 
     constant r_width : integer := axi_s2m_r_sz(data_width, id_width);
 
-    signal read_valid : std_logic := '0';
+    signal read_valid : std_logic;
     signal read_data, write_data : std_logic_vector(r_width - 1 downto 0);
 
   begin
@@ -84,8 +86,11 @@ begin
       )
       port map(
         clk => clk,
+        rst_n => rst_n,
         clk_read => clk_input,
+        rst_read_n => rst_input_n,
         clk_write => clk,
+        rst_write_n => rst_n,
         --
         read_ready => input_m2s.ready,
         read_valid => read_valid,

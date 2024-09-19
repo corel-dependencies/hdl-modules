@@ -31,11 +31,13 @@ entity axi_lite_to_vec is
   );
   port (
     clk_axi_lite : in std_logic;
+    rst_axi_lite_n : in std_ulogic;
     axi_lite_m2s : in axi_lite_m2s_t;
     axi_lite_s2m : out axi_lite_s2m_t;
 
     -- Only need to set if different from clk_axi_lite
     clk_axi_lite_vec : in std_logic_vector(axi_lite_slaves'range) := (others => '0');
+    rst_axi_lite_vec_n : in std_ulogic_vector(axi_lite_slaves'range) := (others => '0');
     axi_lite_m2s_vec : out axi_lite_m2s_vec_t(axi_lite_slaves'range);
     axi_lite_s2m_vec : in axi_lite_s2m_vec_t(axi_lite_slaves'range)
   );
@@ -57,6 +59,7 @@ begin
     )
     port map (
       clk => clk_axi_lite,
+      rst_n => rst_axi_lite_n,
 
       axi_lite_m2s => axi_lite_m2s,
       axi_lite_s2m => axi_lite_s2m,
@@ -82,10 +85,12 @@ begin
           )
           port map (
             clk_master => clk_axi_lite,
+            rst_master_n => rst_axi_lite_n,
             master_m2s => axi_lite_m2s_vec_int(slave),
             master_s2m => axi_lite_s2m_vec_int(slave),
             --
             clk_slave => clk_axi_lite_vec(slave),
+            rst_slave_n => rst_axi_lite_vec_n(slave),
             slave_m2s => axi_lite_m2s_vec(slave),
             slave_s2m => axi_lite_s2m_vec(slave)
           );

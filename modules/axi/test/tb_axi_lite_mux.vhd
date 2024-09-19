@@ -53,6 +53,7 @@ architecture tb of tb_axi_lite_mux is
 
   constant clk_period : time := 10 ns;
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic;
 
   signal axi_lite_m2s, hard_coded_m2s : axi_lite_m2s_t;
   signal axi_lite_s2m : axi_lite_s2m_t;
@@ -75,6 +76,7 @@ begin
 
   test_runner_watchdog(runner, 2 ms);
   clk <= not clk after clk_period / 2;
+  rst_n <= '0', '1' after 2*clk_period;
 
 
   ------------------------------------------------------------------------------
@@ -88,7 +90,7 @@ begin
     procedure hard_coded_read_data(addr : in unsigned(slave_addrs(0).addr'range)) is
     begin
       hard_coded_m2s.read.ar.valid <= '1';
-      hard_coded_m2s.read.ar.addr <= x"0000_0000" & addr;
+      hard_coded_m2s.read.ar.addr <= addr;
       wait until (axi_lite_s2m.read.ar.ready and axi_lite_m2s.read.ar.valid) = '1' and rising_edge(clk);
       hard_coded_m2s.read.ar.valid <= '0';
 
@@ -101,13 +103,13 @@ begin
                                     data : in std_logic_vector(data_width - 1 downto 0)) is
     begin
       hard_coded_m2s.write.aw.valid <= '1';
-      hard_coded_m2s.write.aw.addr <= x"0000_0000" & addr;
+      hard_coded_m2s.write.aw.addr <= addr;
       wait until (axi_lite_s2m.write.aw.ready and axi_lite_m2s.write.aw.valid) = '1' and rising_edge(clk);
       hard_coded_m2s.write.aw.valid <= '0';
 
       hard_coded_m2s.write.w.valid <= '1';
-      hard_coded_m2s.write.w.data <= x"0000_0000" & data;
-      hard_coded_m2s.write.w.strb <= x"0f";
+      hard_coded_m2s.write.w.data <= data;
+      hard_coded_m2s.write.w.strb <= x"f";
       wait until (axi_lite_s2m.write.w.ready and axi_lite_m2s.write.w.valid) = '1' and rising_edge(clk);
       hard_coded_m2s.write.w.valid <= '0';
 
@@ -248,6 +250,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
 
       axi_lite_m2s => axi_lite_m2s,
       axi_lite_s2m => axi_lite_s2m,

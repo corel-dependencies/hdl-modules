@@ -45,7 +45,7 @@ package axi_lite_pkg is
   ------------------------------------------------------------------------------
 
   -- Max values
-  constant axi_lite_data_sz : positive := 64;
+  constant axi_lite_data_sz : positive := 32;
   constant axi_lite_w_strb_sz : positive := axi_lite_data_sz / 8;
 
   function to_axi_lite_strb(data_width : positive) return std_logic_vector;

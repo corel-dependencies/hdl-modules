@@ -29,34 +29,38 @@ entity fifo_wrapper is
     enable_last : boolean := false;
     enable_packet_mode : boolean := false;
     enable_drop_packet : boolean := false;
-    ram_type : ram_style_t := ram_style_auto
+    ram_type : ram_style_t := ram_style_auto;
+    microsemi_flash_device : boolean := false -- Possible on some Microsemi devices, not on Xilinx.
   );
   port (
     -- This clock is used for a synchronous FIFO
     clk : in std_logic;
+    rst_n : in std_ulogic;
     -- These clocks are used for an asynchronous FIFO
     clk_read : in std_logic := '0';
+    rst_read_n : in std_ulogic := '1';
     clk_write : in std_logic := '0';
+    rst_write_n : in std_ulogic := '1';
 
     read_ready : in  std_logic;
-    read_valid : out std_logic := '0';
-    read_data : out std_logic_vector(width - 1 downto 0) := (others => '0');
-    read_last : out std_logic := '0';
+    read_valid : out std_logic;
+    read_data : out std_logic_vector(width - 1 downto 0);
+    read_last : out std_logic;
 
     -- Note that this is the same as write_level for a synchronous FIFO.
-    read_level : out integer range 0 to depth := 0;
+    read_level : out integer range 0 to depth;
     -- Note that for an asynchronous FIFO, this signal is in the "read" clock domain.
-    almost_empty : out std_logic := '1';
+    almost_empty : out std_logic;
 
-    write_ready : out std_logic := '1';
+    write_ready : out std_logic;
     write_valid : in  std_logic;
     write_data : in  std_logic_vector(width - 1 downto 0);
     write_last : in std_logic := '0';
 
     -- Note that this is the same as read_level for a synchronous FIFO.
-    write_level : out integer range 0 to depth := 0;
+    write_level : out integer range 0 to depth;
     -- Note that for an asynchronous FIFO, this signal is in the "write" clock domain.
-    almost_full : out std_logic := '0';
+    almost_full : out std_logic;
 
     -- Note that for an asynchronous FIFO, this signal is in the "write" clock domain
     drop_packet : in std_logic := '0'
@@ -89,10 +93,12 @@ begin
         enable_last => enable_last,
         enable_packet_mode => enable_packet_mode,
         enable_drop_packet => enable_drop_packet,
-        ram_type => ram_type
+        ram_type => ram_type,
+        microsemi_flash_device => microsemi_flash_device
       )
       port map (
         clk_read => clk_read,
+        rst_read_n => rst_read_n,
         read_ready => read_ready,
         read_valid => read_valid,
         read_data => read_data,
@@ -102,6 +108,7 @@ begin
         read_almost_empty => almost_empty,
         --
         clk_write => clk_write,
+        rst_write_n => rst_write_n,
         write_ready => write_ready,
         write_valid => write_valid,
         write_data => write_data,
@@ -125,10 +132,12 @@ begin
         enable_last => enable_last,
         enable_packet_mode => enable_packet_mode,
         enable_drop_packet => enable_drop_packet,
-        ram_type => ram_type
+        ram_type => ram_type,
+        microsemi_flash_device => microsemi_flash_device
       )
       port map (
         clk => clk,
+        rst_n => rst_n,
         level => read_level,
         --
         read_ready => read_ready,

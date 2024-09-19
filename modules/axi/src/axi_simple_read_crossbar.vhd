@@ -35,11 +35,12 @@ entity axi_simple_read_crossbar is
   );
   port(
     clk : in std_logic;
+    rst_n : in std_ulogic;
     --
     input_ports_m2s : in axi_read_m2s_vec_t(0 to num_inputs - 1) := (others => axi_read_m2s_init);
-    input_ports_s2m : out axi_read_s2m_vec_t(0 to num_inputs - 1) := (others => axi_read_s2m_init);
+    input_ports_s2m : out axi_read_s2m_vec_t(0 to num_inputs - 1);
     --
-    output_m2s : out axi_read_m2s_t := axi_read_m2s_init;
+    output_m2s : out axi_read_m2s_t;
     output_s2m : in axi_read_s2m_t := axi_read_s2m_init
   );
 end entity;
@@ -51,20 +52,27 @@ architecture a of axi_simple_read_crossbar is
   -- Max num outstanding address transactions
   constant max_addr_fifo_depth : integer := 128;
 
-  signal input_select : integer range 0 to no_input_selected := no_input_selected;
-  signal input_select_turn_counter : integer range input_ports_m2s'range := 0;
+  signal input_select : integer range 0 to no_input_selected;
+  signal input_select_turn_counter : integer range input_ports_m2s'range;
 
   type state_t is (wait_for_ar_valid, wait_for_ar_done, wait_for_r_done);
-  signal state : state_t := wait_for_ar_valid;
+  signal state : state_t;
 
 begin
 
   ----------------------------------------------------------------------------
-  select_input : process
+  select_input : process (clk, rst_n) is
     variable ar_done, r_done : std_logic;
-    variable num_outstanding_addr_transactions : integer range 0 to max_addr_fifo_depth := 0;
+    variable num_outstanding_addr_transactions : integer range 0 to max_addr_fifo_depth;
   begin
-    wait until rising_edge(clk);
+    if not rst_n then
+      state <= wait_for_ar_valid;
+      input_select <= no_input_selected;
+      input_select_turn_counter <= 0;
+      num_outstanding_addr_transactions := 0;
+      ar_done := '-';
+      r_done := '-';
+    elsif rising_edge(clk) then
 
     ar_done := output_s2m.ar.ready and output_m2s.ar.valid;
     r_done := output_m2s.r.ready and output_s2m.r.valid and output_s2m.r.last;
@@ -102,6 +110,8 @@ begin
         end if;
 
     end case;
+
+    end if;
   end process;
 
 

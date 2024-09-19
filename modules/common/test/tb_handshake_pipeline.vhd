@@ -33,6 +33,7 @@ end entity;
 architecture tb of tb_handshake_pipeline is
 
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic := '1';
   constant clk_period : time := 10 ns;
 
   constant data_width : integer := 16;
@@ -73,6 +74,7 @@ begin
 
   test_runner_watchdog(runner, 2 ms);
   clk <= not clk after clk_period / 2;
+  rst_n <= '0', '1' after 2*clk_period;
 
 
   ------------------------------------------------------------------------------
@@ -133,6 +135,8 @@ begin
     disable(get_logger("input_master:rule 4"), warning);
     disable(get_logger("output_slave:rule 4"), warning);
 
+    wait until rst_n;
+
     if run("test_random_data") then
       run_test;
       run_test;
@@ -188,6 +192,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
       --
       input_ready => input_ready,
       input_valid => input_valid,

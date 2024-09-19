@@ -37,11 +37,12 @@ entity axi_to_axi_lite is
   );
   port (
     clk : in std_logic;
+    rst_n : in std_ulogic;
 
     axi_m2s : in axi_m2s_t := axi_m2s_init;
-    axi_s2m : out axi_s2m_t := axi_s2m_init;
+    axi_s2m : out axi_s2m_t;
 
-    axi_lite_m2s : out axi_lite_m2s_t := axi_lite_m2s_init;
+    axi_lite_m2s : out axi_lite_m2s_t;
     axi_lite_s2m : in axi_lite_s2m_t := axi_lite_s2m_init
   );
 end entity;
@@ -51,14 +52,14 @@ architecture a of axi_to_axi_lite is
   constant len : integer := 0;
   constant size : integer := log2(data_width / 8);
 
-  signal read_id, write_id : unsigned(axi_m2s.read.ar.id'range) := (others => '0');
+  signal read_id, write_id : unsigned(axi_m2s.read.ar.id'range);
 
   subtype data_rng is integer range data_width - 1 downto 0;
   subtype strb_rng is integer range data_width / 8 - 1 downto 0;
 
-  signal read_error, write_error : boolean := false;
+  signal read_error, write_error : boolean;
 
-  signal ar_done, aw_done, w_done : std_logic := '0';
+  signal ar_done, aw_done, w_done : std_logic;
 
 begin
 
@@ -75,7 +76,6 @@ begin
   axi_s2m.read.r.data(data_rng) <= axi_lite_s2m.read.r.data(data_rng);
   axi_s2m.read.r.resp <= axi_resp_slverr when read_error else axi_lite_s2m.read.r.resp;
   axi_s2m.read.r.last <= '1';
-
 
   ------------------------------------------------------------------------------
   axi_lite_m2s.write.aw.valid <= axi_m2s.write.aw.valid and not aw_done;
@@ -99,9 +99,14 @@ begin
 
 
   ------------------------------------------------------------------------------
-  mirror_id : process
+  mirror_id : process (clk, rst_n) is
   begin
-    wait until rising_edge(clk);
+    if not rst_n then
+      read_id <= (others => '0');
+      ar_done <= '0';
+      aw_done <= '0';
+      w_done <= '0';
+    elsif rising_edge(clk) then
 
     -- Save the ID's so they can be returned in the read/write response transaction.
 
@@ -127,13 +132,18 @@ begin
       aw_done <= '0';
       w_done <= '0';
     end if;
+
+    end if;
   end process;
 
 
   ------------------------------------------------------------------------------
-  check_for_bus_error : process
+  check_for_bus_error : process (clk, rst_n) is
   begin
-    wait until rising_edge(clk);
+    if not rst_n then
+      write_error <= false;
+      read_error <= false;
+    elsif rising_edge(clk) then
 
     -- If an error occurs the bus will return an error. The bus will be unlocked for any
     -- upcoming transactions, if the SW can handle it.
@@ -152,6 +162,8 @@ begin
       else
         read_error <= false;
       end if;
+    end if;
+
     end if;
   end process;
 

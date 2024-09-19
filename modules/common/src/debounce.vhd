@@ -23,20 +23,21 @@ entity debounce is
   generic (
     -- Number of cycles the input must be stable for the value to propagate to the result side.
     stable_count : positive
-  );
+    );
   port (
     -- Input value that may be metastable and noisy
-    noisy_input : in std_logic := '0';
+    noisy_input   : in  std_logic := '0';
     --
-    clk : in std_logic;
-    stable_result : out std_logic := '0'
-  );
+    clk           : in  std_logic;
+    rst_n         : in  std_ulogic;
+    stable_result : out std_logic
+    );
 end entity;
 
 architecture a of debounce is
 
-  signal noisy_input_resync : std_logic := '0';
-  signal num_cycles_with_new_value : integer range 0 to stable_count - 1 := 0;
+  signal noisy_input_resync        : std_logic;
+  signal num_cycles_with_new_value : integer range 0 to stable_count - 1;
 
 begin
 
@@ -45,30 +46,36 @@ begin
     generic map (
       -- We do not know the input clock, so set this to false
       enable_input_register => false
-    )
+      )
     port map (
-      data_in => noisy_input,
+      data_in   => noisy_input,
       --
-      clk_out => clk,
-      data_out => noisy_input_resync
-    );
+      clk_out   => clk,
+      rst_out_n => rst_n,
+      data_out  => noisy_input_resync
+      );
 
 
   ------------------------------------------------------------------------------
-  main : process
+  main : process (clk, rst_n) is
   begin
-    wait until rising_edge(clk);
-
-    if noisy_input_resync = stable_result then
+    if not rst_n then
+      stable_result             <= '0';
       num_cycles_with_new_value <= 0;
+    elsif rising_edge(clk) then
 
-    else
-      if num_cycles_with_new_value = stable_count - 1 then
-        stable_result <= noisy_input_resync;
+      if noisy_input_resync = stable_result then
         num_cycles_with_new_value <= 0;
+
       else
-        num_cycles_with_new_value <= num_cycles_with_new_value + 1;
+        if num_cycles_with_new_value = stable_count - 1 then
+          stable_result             <= noisy_input_resync;
+          num_cycles_with_new_value <= 0;
+        else
+          num_cycles_with_new_value <= num_cycles_with_new_value + 1;
+        end if;
       end if;
+
     end if;
   end process;
 

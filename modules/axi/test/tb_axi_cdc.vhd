@@ -47,6 +47,7 @@ architecture tb of tb_axi_cdc is
   constant clk_slow_period : time := 7 ns;
 
   signal clk_input, clk_output : std_logic := '0';
+  signal rst_input_n, rst_output_n : std_ulogic;
 
   signal input_read_m2s : axi_read_m2s_t := axi_read_m2s_init;
   signal input_read_s2m : axi_read_s2m_t := axi_read_s2m_init;
@@ -76,14 +77,18 @@ begin
 
   clk_input_gen : if input_clk_fast generate
     clk_input <= not clk_input after clk_fast_period / 2;
+    rst_input_n <= '0', '1' after 2*clk_fast_period;
   else generate
     clk_input <= not clk_input after clk_slow_period / 2;
+    rst_input_n <= '0', '1' after 2*clk_slow_period;
   end generate;
 
   clk_output_gen : if output_clk_fast generate
     clk_output <= not clk_output after clk_fast_period / 2;
+    rst_output_n <= '0', '1' after 2*clk_fast_period;
   else generate
     clk_output <= not clk_output after clk_slow_period / 2;
+    rst_output_n <= '0', '1' after 2*clk_slow_period;
   end generate;
 
   test_runner_watchdog(runner, 1 ms);
@@ -100,6 +105,9 @@ begin
     rnd.InitSeed(rnd'instance_name);
 
     buf := allocate(memory, 4 * num_words);
+
+    wait on clk_input until rst_input_n;
+    wait on clk_output until rst_output_n;
 
     if run("test_read") then
       for idx in 0 to num_words - 1 loop
@@ -164,10 +172,12 @@ begin
       )
       port map (
         clk_input => clk_input,
+        rst_input_n => rst_input_n,
         input_m2s => input_read_m2s,
         input_s2m => input_read_s2m,
         --
         clk_output => clk_output,
+        rst_output_n => rst_output_n,
         output_m2s => resynced_m2s,
         output_s2m => resynced_s2m,
         output_data_fifo_level => data_fifo_level
@@ -185,6 +195,7 @@ begin
       )
       port map (
         clk => clk_output,
+        rst_n => rst_output_n,
         --
         data_fifo_level => data_fifo_level,
         --
@@ -235,10 +246,12 @@ begin
       )
       port map (
         clk_input => clk_input,
+        rst_input_n => rst_input_n,
         input_m2s => input_write_m2s,
         input_s2m => input_write_s2m,
         --
         clk_output => clk_output,
+        rst_output_n => rst_output_n,
         output_m2s => resynced_m2s,
         output_s2m => resynced_s2m,
         output_data_fifo_level => data_fifo_level
@@ -256,6 +269,7 @@ begin
       )
       port map (
         clk => clk_output,
+        rst_n => rst_output_n,
         --
         data_fifo_level => data_fifo_level,
         --
@@ -276,6 +290,7 @@ begin
       )
       port map (
         clk => clk_output,
+        rst_n => rst_output_n,
         --
         axi_write_m2s => throttled_m2s,
         axi_write_s2m => throttled_s2m

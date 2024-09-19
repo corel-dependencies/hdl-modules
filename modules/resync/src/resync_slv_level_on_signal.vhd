@@ -29,8 +29,9 @@ entity resync_slv_level_on_signal is
    data_in : in std_logic_vector(default_value'range);
 
    clk_out : in std_logic;
+   rst_out_n : in std_ulogic;
    sample_value : in std_logic;
-   data_out : out std_logic_vector(default_value'range) := default_value
+   data_out : out std_logic_vector(default_value'range)
   );
 end entity;
 
@@ -50,6 +51,7 @@ begin
         data_in => data_in(i),
 
         clk_out => clk_out,
+        rst_out_n => rst_out_n,
         sample_value => sample_value,
         data_out => data_out(i)
       );

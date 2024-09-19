@@ -30,6 +30,7 @@ entity axi_write_slave is
   );
   port (
     clk : in std_logic;
+    rst_n : in std_ulogic;
     axi_write_m2s : in axi_write_m2s_t := axi_write_m2s_init;
     axi_write_s2m : out axi_write_s2m_t := axi_write_s2m_init
   );
@@ -60,6 +61,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
       --
       input_m2s => axi_write_m2s.w,
       input_s2m => axi_write_s2m.w,

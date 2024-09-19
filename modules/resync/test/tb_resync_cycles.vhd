@@ -45,6 +45,7 @@ architecture tb of tb_resync_cycles is
   end function;
 
   signal clk_in, clk_out : std_logic := '0';
+  signal rst_in_n, rst_out_n : std_logic;
   signal data_in, data_out : std_logic := not active_level;
 
   signal num_data_out : integer := 0;
@@ -54,7 +55,9 @@ begin
 
   test_runner_watchdog(runner, 100 us);
   clk_in <= not clk_in after clock_period_medium / 2;
+  rst_in_n <= '0', '1' after 2*clock_period_medium;
   clk_out <= not clk_out after clk_out_period / 2;
+  rst_out_n <= '0', '1' after 2*clk_out_period;
 
 
   ------------------------------------------------------------------------------
@@ -86,6 +89,8 @@ begin
     test_runner_setup(runner, runner_cfg);
     wait until rising_edge(clk_in);
 
+    wait on clk_in until rst_in_n and rst_out_n;
+
     if output_clock_is_slower then
       -- The resync may fail only after 2**counter_width input cycles
       for test_num in 1 to 10 loop
@@ -101,7 +106,6 @@ begin
     test_runner_cleanup(runner);
   end process;
 
-
   ------------------------------------------------------------------------------
   output : process
   begin
@@ -113,7 +117,6 @@ begin
     end if;
   end process;
 
-
   ------------------------------------------------------------------------------
   dut : entity work.resync_cycles
     generic map (
@@ -122,9 +125,11 @@ begin
     )
     port map (
       clk_in => clk_in,
+      rst_in_n => rst_in_n,
       data_in => data_in,
 
       clk_out => clk_out,
+      rst_out_n => rst_out_n,
       data_out => data_out);
 
 end architecture;

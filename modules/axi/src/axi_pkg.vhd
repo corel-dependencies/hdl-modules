@@ -33,7 +33,7 @@ package axi_pkg is
   ------------------------------------------------------------------------------
 
   -- Max value
-  constant axi_a_addr_sz : positive := 64;
+  constant axi_a_addr_sz : positive := 32;
   -- Number of transfers = len + 1
   constant axi_a_len_sz : positive := 8;
   -- Bytes per transfer = 2^size

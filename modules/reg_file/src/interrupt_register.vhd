@@ -16,38 +16,43 @@ use reg_file.reg_file_pkg.all;
 
 entity interrupt_register is
   port (
-    clk : in std_logic;
+    clk   : in std_logic;
+    rst_n : in std_ulogic;
 
     sources : in reg_t := (others => '0');
-    mask : in reg_t := (others => '1');
-    clear : in reg_t := (others => '0');
+    mask    : in reg_t := (others => '1');
+    clear   : in reg_t := (others => '0');
 
-    status : out reg_t := (others => '0');
-    trigger : out std_logic := '0'
-  );
+    status  : out reg_t;
+    trigger : out std_logic
+    );
 end entity;
 
 architecture a of interrupt_register is
 begin
 
-  main : process
+  main : process (clk, rst_n)
     variable status_next : reg_t := (others => '0');
   begin
-    wait until rising_edge(clk);
+    if not rst_n then
+      status  <= (others => '0');
+      trigger <= '0';
+    elsif rising_edge(clk) then
 
-    for idx in sources'range loop
-      if clear(idx) then
-        status_next(idx) := '0';
-      elsif sources(idx) then
-        status_next(idx) := '1';
-      else
-        status_next(idx) := status(idx);
-      end if;
-    end loop;
+      for idx in sources'range loop
+        if clear(idx) then
+          status_next(idx) := '0';
+        elsif sources(idx) then
+          status_next(idx) := '1';
+        else
+          status_next(idx) := status(idx);
+        end if;
+      end loop;
 
-    trigger <= or (status_next and mask);
+      trigger <= or (status_next and mask);
 
-    status <= status_next;
+      status <= status_next;
+    end if;
   end process;
 
 end architecture;

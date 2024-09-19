@@ -1,9 +1,15 @@
 -- -------------------------------------------------------------------------------------------------
 -- Copyright (c) Lukas Vik. All rights reserved.
+-- Copyright (c) DESY
 --
--- This file is part of the tsfpga project.
+-- Original file is part of the tsfpga project.
 -- https://tsfpga.com
 -- https://gitlab.com/tsfpga/tsfpga
+--
+-- Modified file is part of the hdl_modules fork
+-- https://github.com/nicdes/hdl-modules
+-- Changes:
+-- * lock in reg_definition_t
 -- -------------------------------------------------------------------------------------------------
 
 library ieee;
@@ -20,7 +26,7 @@ use math.math_pkg.all;
 package reg_file_pkg is
 
   constant reg_width : integer := 32;
-  subtype reg_t is std_logic_vector(reg_width - 1 downto 0);
+  subtype reg_t is std_ulogic_vector(reg_width - 1 downto 0);
   type reg_vec_t is array (integer range <>) of reg_t;
 
   type reg_type_t is (
@@ -36,12 +42,16 @@ package reg_file_pkg is
   function is_write_pulse_type(reg_type : reg_type_t) return boolean;
   function is_fabric_gives_value_type(reg_type : reg_type_t) return boolean;
 
+  type atomic_space_t is (first_idx, last_idx, none);
   type reg_definition_t is record
     idx : integer;
     reg_type : reg_type_t;
+    atomic_lock : integer;
   end record;
   type reg_definition_vec_t is array (natural range <>) of reg_definition_t;
 
+  function is_atomic_segment_start(reg : reg_definition_t) return boolean;
+  function is_atomic_segment_end(reg : reg_definition_t) return boolean;
   function get_highest_idx(regs : reg_definition_vec_t) return integer;
   function get_addr_mask(regs : reg_definition_vec_t) return addr_t;
   function to_addr_and_mask_vec(regs : reg_definition_vec_t) return addr_and_mask_vec_t;
@@ -69,6 +79,16 @@ package body reg_file_pkg is
   begin
     return reg_type = r or reg_type = r_wpulse;
   end function;
+
+  function is_atomic_segment_start(reg : reg_definition_t) return boolean is
+    begin
+      return reg.atomic_lock > 0;
+    end function;
+
+  function is_atomic_segment_end(reg : reg_definition_t) return boolean is
+    begin
+      return reg.atomic_lock < 0;
+    end function;
 
   function get_highest_idx(regs : reg_definition_vec_t) return integer is
   begin

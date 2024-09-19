@@ -46,43 +46,41 @@ entity axi_read_throttle is
   );
   port(
     clk : in std_logic;
+    rst_n : in std_ulogic;
     --
     data_fifo_level : in integer range 0 to data_fifo_depth;
     --
     input_m2s : in axi_read_m2s_t := axi_read_m2s_init;
-    input_s2m : out axi_read_s2m_t := axi_read_s2m_init;
+    input_s2m : out axi_read_s2m_t;
     --
-    throttled_m2s : out axi_read_m2s_t := axi_read_m2s_init;
+    throttled_m2s : out axi_read_m2s_t;
     throttled_s2m : in axi_read_s2m_t := axi_read_s2m_init
   );
 end entity;
 
 architecture a of axi_read_throttle is
 
-  signal pipelined_m2s_ar : axi_m2s_a_t := axi_m2s_a_init;
-  signal pipelined_s2m_ar : axi_s2m_a_t := axi_s2m_a_init;
+  signal pipelined_m2s_ar : axi_m2s_a_t;
+  signal pipelined_s2m_ar : axi_s2m_a_t;
 
-  signal address_transaction, data_transaction : std_logic := '0';
+  signal address_transaction, data_transaction : std_logic;
 
   -- The bits of the ARLEN field that shall be taken into account
   constant len_width : positive := num_bits_needed(max_burst_length_beats - 1);
   subtype len_range is integer range len_width - 1 downto 0;
 
     -- +1 in range for sign bit
-  signal minus_burst_length_beats : signed(len_width + 1 - 1 downto 0) :=
-    (others => '0');
+  signal minus_burst_length_beats : signed(len_width + 1 - 1 downto 0);
 
   -- Number of data beats that have been negotiated via address transactions,
   -- but have not yet been sent by the master. Aka outstanding beats.
-  -- Note that according to the AXI standard, RVALID may never arrive before ARREADY.
-  -- Hence this counter can never go negative.
   subtype data_counter_t is integer range 0 to data_fifo_depth;
-  signal num_beats_negotiated_but_not_sent : data_counter_t := 0;
+  signal num_beats_negotiated_but_not_sent : data_counter_t;
 
   -- Negation of:
   -- Number of data beat words empty in the FIFO, that are not claimed by oustanding transactions.
   signal minus_num_empty_words_in_fifo_that_have_not_been_negotiated :
-    integer range -data_fifo_depth to 0 := 0;
+    integer range -data_fifo_depth to 0;
 
 begin
 
@@ -90,8 +88,8 @@ begin
   pipeline : block
     constant m2s_length : positive := axi_m2s_a_sz(id_width=>id_width, addr_width=>addr_width);
     signal input_m2s_ar_slv, pipelined_m2s_ar_slv :
-      std_logic_vector(m2s_length - 1 downto 0) := (others => '0');
-    signal pipelined_valid : std_logic := '0';
+      std_logic_vector(m2s_length - 1 downto 0);
+    signal pipelined_valid : std_logic;
   begin
 
     input_m2s_ar_slv <= to_slv(data=>input_m2s.ar, id_width=>id_width, addr_width=>addr_width);
@@ -109,6 +107,7 @@ begin
       )
       port map (
         clk => clk,
+        rst_n => rst_n,
         --
         input_ready => input_s2m.ar.ready,
         input_valid => input_m2s.ar.valid,
@@ -174,12 +173,18 @@ begin
 
 
   ------------------------------------------------------------------------------
-  count : process
+  count : process (clk, rst_n) is
     variable num_empty_words_in_fifo, num_beats_negotiated_but_not_sent_int
-      : data_counter_t := 0;
-    variable ar_term : signed(minus_burst_length_beats'range) := (others => '0');
+      : data_counter_t;
+    variable ar_term : signed(minus_burst_length_beats'range);
   begin
-    wait until rising_edge(clk);
+    if not rst_n then
+      num_beats_negotiated_but_not_sent <= 0;
+      minus_num_empty_words_in_fifo_that_have_not_been_negotiated <= 0;
+      num_empty_words_in_fifo := 0;
+      num_beats_negotiated_but_not_sent_int := 0;
+      ar_term := (others => '0');
+    elsif rising_edge(clk) then
 
     -- This muxing results in a shorter critical path than doing
     -- e.g. minus_burst_length_beats * to_int(address_transaction).
@@ -199,6 +204,8 @@ begin
       num_beats_negotiated_but_not_sent_int - num_empty_words_in_fifo;
 
     num_beats_negotiated_but_not_sent <= num_beats_negotiated_but_not_sent_int;
+
+    end if;
   end process;
 
   address_transaction <= throttled_m2s.ar.valid and throttled_s2m.ar.ready;

@@ -26,30 +26,34 @@ entity resync_level_on_signal is
     -- Initial value for the ouput that will be set until the first input value has propagated
     -- and been sampled.
     default_value : std_logic := '0'
-  );
+    );
   port (
-   data_in : in std_logic;
+    data_in : in std_logic;
 
-   clk_out : in std_logic;
-   sample_value : in std_logic;
-   data_out : out std_logic := default_value
-  );
+    clk_out      : in  std_logic;
+    rst_out_n    : in  std_ulogic;
+    sample_value : in  std_logic;
+    data_out     : out std_logic
+    );
 end entity;
 
 architecture a of resync_level_on_signal is
-  signal data_in_int : std_logic;
-  attribute dont_touch of data_in_int : signal is "true"; -- Keep net so that we can apply constraint
+  signal data_in_int                  : std_logic;
+  attribute dont_touch of data_in_int : signal is "true";  -- Keep net so that we can apply constraint
 begin
 
   data_in_int <= data_in;
 
 
   ------------------------------------------------------------------------------
-  main : process
+  main : process (clk_out, rst_out_n) is
   begin
-    wait until rising_edge(clk_out);
-    if sample_value then
-      data_out <= data_in_int;
+    if not rst_out_n then
+      data_out <= default_value;
+    elsif rising_edge(clk_out) then
+      if sample_value then
+        data_out <= data_in_int;
+      end if;
     end if;
   end process;
 

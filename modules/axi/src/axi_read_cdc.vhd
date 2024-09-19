@@ -32,13 +32,15 @@ entity axi_read_cdc is
   );
   port (
     clk_input : in std_logic;
+    rst_input_n : in std_ulogic;
     input_m2s : in axi_read_m2s_t;
-    input_s2m : out axi_read_s2m_t := axi_read_s2m_init;
+    input_s2m : out axi_read_s2m_t;
     --
     clk_output : in std_logic;
-    output_m2s : out axi_read_m2s_t := axi_read_m2s_init;
+    rst_output_n : in std_ulogic;
+    output_m2s : out axi_read_m2s_t;
     output_s2m : in axi_read_s2m_t;
-    output_data_fifo_level : out integer range 0 to data_fifo_depth := 0
+    output_data_fifo_level : out integer range 0 to data_fifo_depth
   );
 end entity;
 
@@ -57,6 +59,7 @@ begin
     )
     port map (
       clk => clk_output,
+      rst_n => rst_output_n,
       --
       input_m2s => input_m2s.ar,
       input_s2m => input_s2m.ar,
@@ -64,7 +67,8 @@ begin
       output_m2s => output_m2s.ar,
       output_s2m => output_s2m.ar,
       --
-      clk_input => clk_input
+      clk_input => clk_input,
+      rst_input_n => rst_input_n
     );
 
 
@@ -80,6 +84,7 @@ begin
     )
     port map (
       clk => clk_output,
+      rst_n => rst_output_n,
       --
       input_m2s => input_m2s.r,
       input_s2m => input_s2m.r,
@@ -88,7 +93,8 @@ begin
       output_s2m => output_s2m.r,
       output_level => output_data_fifo_level,
       --
-      clk_input => clk_input
+      clk_input => clk_input,
+      rst_input_n => rst_input_n
     );
 
 end architecture;

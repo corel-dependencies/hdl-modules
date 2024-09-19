@@ -58,21 +58,23 @@ entity resync_level is
     enable_input_register : boolean;
     -- Initial value for the ouput that will be set for a few cycles before the first input
     -- value has propagated.
-    default_value : std_logic := '0'
-  );
+    default_value         : std_logic := '0'
+    );
   port (
-    clk_in : in std_logic := '-';
+    clk_in  : in std_logic := '-';
+    rst_in_n : in std_ulogic := '-';
     data_in : in std_logic;
 
-    clk_out : in std_logic;
+    clk_out  : in  std_logic;
+    rst_out_n : in std_ulogic;
     data_out : out std_logic
-  );
+    );
 end entity;
 
 architecture a of resync_level is
-  signal data_in_int, data_in_p1, data_out_int : std_logic := default_value;
+  signal data_in_int, data_in_p1, data_out_int : std_logic;
 
-  attribute async_reg of data_in_p1 : signal is "true";
+  attribute async_reg of data_in_p1   : signal is "true";
   attribute async_reg of data_out_int : signal is "true";
 begin
 
@@ -88,11 +90,13 @@ begin
   assign_input : if enable_input_register generate
 
     ------------------------------------------------------------------------------
-    input_register : process
+    input_register : process (clk_in, rst_in_n) is
     begin
-      wait until rising_edge(clk_in);
-
-      data_in_int <= data_in;
+      if not rst_in_n then
+        data_in_int <= default_value;
+      elsif rising_edge(clk_in) then
+        data_in_int <= data_in;
+      end if;
     end process;
 
   else generate
@@ -101,13 +105,16 @@ begin
 
   end generate;
 
-
   ------------------------------------------------------------------------------
-  main : process
+  main : process (clk_out, rst_out_n) is
   begin
-    wait until rising_edge(clk_out);
-    data_out_int <= data_in_p1;
-    data_in_p1 <= data_in_int;
+    if not rst_out_n then
+      data_out_int <= default_value;
+      data_in_p1   <= default_value;
+    elsif rising_edge(clk_out) then
+      data_out_int <= data_in_p1;
+      data_in_p1   <= data_in_int;
+    end if;
   end process;
 
 end architecture;

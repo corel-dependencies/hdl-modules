@@ -24,6 +24,7 @@ end entity;
 architecture tb of tb_debounce is
 
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic;
   constant clk_period : time := 10 ns;
 
   constant stable_count : positive := 100;
@@ -35,7 +36,7 @@ begin
 
   test_runner_watchdog(runner, 100 us);
   clk <= not clk after clk_period / 2;
-
+  rst_n <= '0', '1' after 2*clk_period;
 
   ------------------------------------------------------------------------------
   main : process
@@ -57,6 +58,8 @@ begin
 
   begin
     test_runner_setup(runner, runner_cfg);
+
+    wait until rst_n;
 
     -- All these test are based on a stable_count of 100.
 
@@ -110,6 +113,7 @@ begin
       noisy_input => noisy_input,
       --
       clk => clk,
+      rst_n => rst_n,
       stable_result => stable_result
     );
 

@@ -22,10 +22,10 @@ entity handshake_splitter is
     input_valid : in std_logic;
     --
     output0_ready : in std_logic;
-    output0_valid : out std_logic := '0';
+    output0_valid : out std_logic;
     --
     output1_ready : in std_logic;
-    output1_valid : out std_logic := '0'
+    output1_valid : out std_logic
   );
 end entity;
 

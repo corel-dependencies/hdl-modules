@@ -41,6 +41,7 @@ architecture tb of tb_axi_fifo is
   constant clk_slow_period : time := 7 ns;
 
   signal clk_input, clk_output : std_logic := '0';
+  signal rst_input_n, rst_output_n : std_ulogic;
 
   signal input_read_m2s, output_read_m2s : axi_read_m2s_t := axi_read_m2s_init;
   signal input_read_s2m, output_read_s2m : axi_read_s2m_t := axi_read_s2m_init;
@@ -71,10 +72,14 @@ begin
 
   clk_input_gen : if asynchronous generate
     clk_input <= not clk_input after clk_fast_period / 2;
+    rst_input_n <= '0', '1' after 2*clk_fast_period;
     clk_output <= not clk_output after clk_slow_period / 2;
+    rst_output_n <= '0', '1' after 2*clk_slow_period;
   else generate
     clk_input <= not clk_input after clk_fast_period / 2;
+    rst_input_n <= '0', '1' after 2*clk_fast_period;
     clk_output <= not clk_output after clk_fast_period / 2;
+    rst_output_n <= '0', '1' after 2*clk_fast_period;
   end generate;
 
   ------------------------------------------------------------------------------
@@ -88,6 +93,8 @@ begin
     rnd.InitSeed(rnd'instance_name);
 
     buf := allocate(memory, 4 * num_words);
+
+    wait on clk_input until rst_input_n and rst_output_n;
 
     if run("test_read") then
       for idx in 0 to num_words - 1 loop
@@ -141,6 +148,7 @@ begin
   )
   port map (
     clk => clk_output,
+    rst_n => rst_output_n,
     --
     axi_read_m2s => output_read_m2s,
     axi_read_s2m => output_read_s2m,
@@ -160,6 +168,7 @@ begin
     )
     port map (
       clk => clk_output,
+      rst_n => rst_output_n,
       --
       input_m2s => input_read_m2s.ar,
       input_s2m => input_read_s2m.ar,
@@ -167,7 +176,8 @@ begin
       output_m2s => output_read_m2s.ar,
       output_s2m => output_read_s2m.ar,
       --
-      clk_input => clk_input
+      clk_input => clk_input,
+      rst_input_n => rst_input_n
     );
 
 
@@ -181,6 +191,7 @@ begin
     )
     port map (
       clk => clk_output,
+      rst_n => rst_output_n,
       --
       input_m2s => input_read_m2s.r,
       input_s2m => input_read_s2m.r,
@@ -188,7 +199,8 @@ begin
       output_m2s => output_read_m2s.r,
       output_s2m => output_read_s2m.r,
       --
-      clk_input => clk_input
+      clk_input => clk_input,
+      rst_input_n => rst_input_n
     );
 
 
@@ -202,6 +214,7 @@ begin
     )
     port map (
       clk => clk_output,
+      rst_n => rst_output_n,
       --
       input_m2s => input_write_m2s.aw,
       input_s2m => input_write_s2m.aw,
@@ -209,7 +222,8 @@ begin
       output_m2s => output_write_m2s.aw,
       output_s2m => output_write_s2m.aw,
       --
-      clk_input => clk_input
+      clk_input => clk_input,
+      rst_input_n => rst_input_n
     );
 
 
@@ -222,6 +236,7 @@ begin
     )
     port map (
       clk => clk_output,
+      rst_n => rst_output_n,
       --
       input_m2s => input_write_m2s.w,
       input_s2m => input_write_s2m.w,
@@ -229,7 +244,8 @@ begin
       output_m2s => output_write_m2s.w,
       output_s2m => output_write_s2m.w,
       --
-      clk_input => clk_input
+      clk_input => clk_input,
+      rst_input_n => rst_input_n
     );
 
 
@@ -242,6 +258,7 @@ begin
     )
     port map (
       clk => clk_output,
+      rst_n => rst_output_n,
       --
       input_m2s => input_write_m2s.b,
       input_s2m => input_write_s2m.b,
@@ -249,7 +266,8 @@ begin
       output_m2s => output_write_m2s.b,
       output_s2m => output_write_s2m.b,
       --
-      clk_input => clk_input
+      clk_input => clk_input,
+      rst_input_n => rst_input_n
     );
 
 end architecture;

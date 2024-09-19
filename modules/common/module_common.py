@@ -6,26 +6,13 @@
 # https://gitlab.com/tsfpga/tsfpga
 # --------------------------------------------------------------------------------------------------
 
-from tsfpga.module import BaseModule
+from tsfpga.module import BaseModule, get_hdl_modules
 from tsfpga.vivado.project import VivadoNetlistProject
 from tsfpga.vivado.build_result_checker import EqualTo, Ffs, Srls, TotalLuts
-from examples.tsfpga_example_env import get_tsfpga_modules
 
 
 class Module(BaseModule):
     def setup_vunit(self, vunit_proj, **kwargs):
-        tb = vunit_proj.library(self.library_name).test_bench("tb_clock_counter")
-        self.add_vunit_config(
-            tb, generics=dict(reference_clock_rate_mhz=250, target_clock_rate_mhz=50)
-        )
-        self.add_vunit_config(
-            tb, generics=dict(reference_clock_rate_mhz=50, target_clock_rate_mhz=250)
-        )
-
-        tb = vunit_proj.library(self.library_name).test_bench("tb_periodic_pulser")
-
-        for period in [5, 15, 37, 300, 4032]:
-            self.add_vunit_config(tb, generics=dict(period=period, shift_register_length=8))
 
         tb = vunit_proj.library(self.library_name).test_bench("tb_width_conversion")
 
@@ -152,7 +139,7 @@ class Module(BaseModule):
         )
 
     def _get_clock_counter_build_projects(self, part, projects):
-        modules = get_tsfpga_modules(names_include=[self.name, "math", "resync"])
+        modules = get_hdl_modules(names_include=[self.name, "math", "resync"])
 
         generics = dict(resolution_bits=24, max_relation_bits=6)
         projects.append(
@@ -187,7 +174,7 @@ class Module(BaseModule):
         )
 
     def _get_period_pulser_build_projects(self, part, projects):
-        modules = get_tsfpga_modules(names_include=[self.name, "math"])
+        modules = get_hdl_modules(names_include=[self.name, "math"])
 
         periods = [32, 37, 300, 63 * 64, 311000000]
         total_luts = [2, 7, 4, 5, 18]

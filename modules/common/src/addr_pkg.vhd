@@ -32,6 +32,12 @@ package addr_pkg is
 
   function decode(addr : unsigned; addrs : addr_and_mask_vec_t) return integer;
 
+  function calc_addr_and_mask_mux(nbits   : positive;
+                                  nslaves : positive
+                                  ) return addr_and_mask_vec_t;
+  procedure pretty_print (
+    addr_and_mask : addr_and_mask_vec_t);
+
 end package;
 
 package body addr_pkg is
@@ -69,5 +75,42 @@ package body addr_pkg is
 
     return decode_fail;
   end function;
+
+  -- Return the address mask to address nslaves slaves.
+  -- nbits: number of addr bits needed by the slave.
+  function calc_mask(nbits   : positive;
+                     nslaves : positive)
+    return addr_t is
+    variable v_result : addr_t := (others => '0');
+  begin
+    v_result(nbits + num_bits_needed(nslaves-1) - 1 downto nbits) := (others => '1');
+    return v_result;
+  end function;
+
+  -- Return the address_and_mask_vec_t (base address and mask) to address
+  -- nslaves slaves.
+  -- nbits: number of addr bits needed by the slave.
+  function calc_addr_and_mask_mux(nbits   : positive;
+                                  nslaves : positive)
+    return addr_and_mask_vec_t is
+    constant C_MASK   : addr_t := calc_mask(nbits, nslaves);
+    variable v_result : addr_and_mask_vec_t(0 to nslaves-1);
+  begin
+    for idx in 0 to nslaves-1 loop
+      v_result(idx).mask := C_MASK;
+      v_result(idx).addr := shift_left(to_unsigned(idx, v_result(idx).addr'length), nbits);
+    end loop;
+    return v_result;
+  end function;
+
+  procedure pretty_print (
+    addr_and_mask : addr_and_mask_vec_t) is
+  begin
+    for i in addr_and_mask'range loop
+      report integer'image(i) & " => (" &
+        to_hstring(addr_and_mask(i).addr) & ", " &
+        to_hstring(addr_and_mask(i).mask) & ")" & lf;
+    end loop;
+  end procedure;
 
 end package body;

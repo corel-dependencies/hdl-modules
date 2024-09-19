@@ -41,18 +41,20 @@ use ieee.std_logic_1164.all;
 
 entity resync_slv_level_coherent is
   generic (
-    width : positive;
+    width         : positive;
     -- Initial value for the ouput that will be set for a few cycles before the first input
     -- value has propagated.
     default_value : std_logic_vector(width - 1 downto 0) := (others => '0')
-  );
+    );
   port (
-    clk_in : in std_logic := '0';
+    clk_in  : in std_logic := '0';
+    rst_in_n  : in std_ulogic;
     data_in : in std_logic_vector(default_value'range);
 
-    clk_out : in std_logic;
-    data_out : out std_logic_vector(default_value'range) := default_value
-  );
+    clk_out  : in  std_logic;
+    rst_out_n  : in  std_ulogic;
+    data_out : out std_logic_vector(default_value'range)
+    );
 end entity;
 
 architecture a of resync_slv_level_coherent is
@@ -61,7 +63,7 @@ architecture a of resync_slv_level_coherent is
 
   constant level_default_value : std_logic := '0';
   signal input_level, input_level_m1, input_level_m1_not_inverted, output_level, output_level_m1
-    : std_logic := level_default_value;
+    : std_logic;
 
 begin
 
@@ -70,15 +72,16 @@ begin
     generic map (
       -- Value is driven by a FF so this is not needed
       enable_input_register => false,
-      default_value => level_default_value
-    )
+      default_value         => level_default_value
+      )
     port map (
-      clk_in => clk_in,
-      data_in => input_level,
+      clk_in   => clk_in,
+      data_in  => input_level,
       --
-      clk_out => clk_out,
+      clk_out  => clk_out,
+      rst_out_n  => rst_out_n,
       data_out => output_level_m1
-    );
+      );
 
 
   ------------------------------------------------------------------------------
@@ -86,15 +89,16 @@ begin
     generic map (
       -- Value is driven by a FF so this is not needed
       enable_input_register => false,
-      default_value => level_default_value
-    )
+      default_value         => level_default_value
+      )
     port map (
-      clk_in => clk_out,
-      data_in => output_level,
+      clk_in   => clk_out,
+      data_in  => output_level,
       --
-      clk_out => clk_in,
+      clk_out  => clk_in,
+      rst_out_n  => rst_out_n,
       data_out => input_level_m1_not_inverted
-    );
+      );
 
   -- Invert here, before the last input level register, so that the output level async_reg is
   -- driven by an FF and not a LUT.
@@ -102,28 +106,36 @@ begin
 
 
   ------------------------------------------------------------------------------
-  handle_input : process
+  handle_input : process (clk_in, rst_in_n) is
   begin
-    wait until rising_edge(clk_in);
+    if not rst_in_n then
+      data_in_sampled <= default_value;
+      input_level     <= level_default_value;
+    elsif rising_edge(clk_in) then
 
-    if input_level /= input_level_m1 then
-      data_in_sampled <= data_in;
+      if input_level /= input_level_m1 then
+        data_in_sampled <= data_in;
+      end if;
+
+      input_level <= input_level_m1;
     end if;
-
-    input_level <= input_level_m1;
   end process;
 
 
   ------------------------------------------------------------------------------
-  handle_output : process
+  handle_output : process (clk_out, rst_out_n) is
   begin
-    wait until rising_edge(clk_out);
+    if not rst_out_n then
+      data_out_int <= default_value;
+      output_level <= level_default_value;
+    elsif rising_edge(clk_out) then
 
-    if output_level /= output_level_m1 then
-      data_out_int <= data_in_sampled;
+      if output_level /= output_level_m1 then
+        data_out_int <= data_in_sampled;
+      end if;
+
+      output_level <= output_level_m1;
     end if;
-
-    output_level <= output_level_m1;
   end process;
 
   data_out <= data_out_int;

@@ -39,6 +39,7 @@ architecture tb of tb_axi_lite_pipeline is
   constant clk_period : time := 7 ns;
 
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic;
 
   signal master_m2s, slave_m2s : axi_lite_m2s_t := axi_lite_m2s_init;
   signal master_s2m, slave_s2m : axi_lite_s2m_t := axi_lite_s2m_init;
@@ -66,6 +67,7 @@ begin
   test_runner_watchdog(runner, 1 ms);
 
   clk <= not clk after clk_period / 2;
+  rst_n <= '0', '1' after 2*clk_period;
 
 
   ------------------------------------------------------------------------------
@@ -80,6 +82,7 @@ begin
 
     buf := allocate(memory, 4 * num_words);
 
+    wait until rst_n;
     for idx in 0 to num_words - 1 loop
       address := 4 * idx;
       data := rnd.RandSlv(data'length);
@@ -140,6 +143,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
       --
       master_m2s => master_m2s,
       master_s2m => master_s2m,

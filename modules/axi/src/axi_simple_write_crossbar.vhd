@@ -37,11 +37,12 @@ entity axi_simple_write_crossbar is
   );
   port(
     clk : in std_logic;
+    rst_n : in std_ulogic;
     --
     input_ports_m2s : in axi_write_m2s_vec_t(0 to num_inputs - 1) := (others => axi_write_m2s_init);
     input_ports_s2m : out axi_write_s2m_vec_t(0 to num_inputs - 1) := (others => axi_write_s2m_init);
     --
-    output_m2s : out axi_write_m2s_t := axi_write_m2s_init;
+    output_m2s : out axi_write_m2s_t;
     output_s2m : in axi_write_s2m_t := axi_write_s2m_init
   );
 end entity;
@@ -53,20 +54,27 @@ architecture a of axi_simple_write_crossbar is
   -- Max num outstanding address transactions
   constant max_addr_fifo_depth : integer := 128;
 
-  signal input_select : integer range 0 to no_input_selected := no_input_selected;
-  signal input_select_turn_counter : integer range input_ports_s2m'range := 0;
+  signal input_select : integer range 0 to no_input_selected;
+  signal input_select_turn_counter : integer range input_ports_s2m'range;
 
   type state_t is (wait_for_aw_valid, wait_for_aw_done, wait_for_b_done);
-  signal state : state_t := wait_for_aw_valid;
+  signal state : state_t;
 
 begin
 
   ----------------------------------------------------------------------------
-  select_input : process
+  select_input : process (clk, rst_n) is
     variable aw_done, b_done : std_logic;
-    variable num_outstanding_addr_transactions : integer range 0 to max_addr_fifo_depth := 0;
+    variable num_outstanding_addr_transactions : integer range 0 to max_addr_fifo_depth;
   begin
-    wait until rising_edge(clk);
+    if not rst_n then
+      state <= wait_for_aw_valid;
+      input_select <= no_input_selected;
+      input_select_turn_counter <= 0;
+      num_outstanding_addr_transactions := 0;
+      aw_done := '-';
+      b_done := '-';
+    elsif rising_edge(clk) then
 
     aw_done := output_s2m.aw.ready and output_m2s.aw.valid;
     b_done := output_m2s.b.ready and output_s2m.b.valid;
@@ -104,6 +112,8 @@ begin
         end if;
 
     end case;
+
+    end if;
   end process;
 
 

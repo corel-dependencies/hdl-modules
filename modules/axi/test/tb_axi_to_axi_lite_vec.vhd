@@ -47,8 +47,8 @@ architecture tb of tb_axi_to_axi_lite_vec is
   );
 
   constant reg_map : reg_definition_vec_t(0 to 2 - 1) := (
-    (idx => 0, reg_type => r_w),
-    (idx => 1, reg_type => r_w)
+    (idx => 0, reg_type => r_w, atomic_lock => 0),
+    (idx => 1, reg_type => r_w, atomic_lock => 0)
   );
 
   constant clk_axi_period : time := 7 ns;
@@ -61,6 +61,7 @@ architecture tb of tb_axi_to_axi_lite_vec is
     (0 => true, 1 => true, 2 => false, 3 => false, 4 => false, 5 => false);
 
   signal clk_axi : std_logic := '0';
+  signal rst_axi_n : std_ulogic;
   signal clk_axi_lite_vec : std_logic_vector(axi_lite_slaves'range) := (others => '0');
 
   signal axi_m2s : axi_m2s_t;
@@ -72,6 +73,7 @@ architecture tb of tb_axi_to_axi_lite_vec is
 begin
 
   clk_axi <= not clk_axi after clk_axi_period / 2;
+  rst_axi_n <= '0', '1' after 2*clk_axi_period;
   clk_axi_lite_vec(0) <= not clk_axi_lite_vec(0) after clk_axi_period / 2;
   clk_axi_lite_vec(1) <= not clk_axi_lite_vec(1) after clk_axi_period / 2;
   clk_axi_lite_vec(2) <= not clk_axi_lite_vec(2) after clk_axi_lite_slow_period / 2;
@@ -88,6 +90,8 @@ begin
     constant dead : std_logic_vector(32 - 1 downto 0) := x"dead_dead";
   begin
     test_runner_setup(runner, runner_cfg);
+
+    wait on clk_axi until rst_axi_n;
 
     for slave_under_test_idx in axi_lite_slaves'range loop
       for slave_idx in axi_lite_slaves'range loop
@@ -138,6 +142,7 @@ begin
     )
     port map (
       clk => clk_axi_lite_vec(slave),
+      rst_n => rst_axi_n,
 
       axi_lite_m2s => axi_lite_m2s_vec(slave),
       axi_lite_s2m => axi_lite_s2m_vec(slave)
@@ -155,10 +160,12 @@ begin
   )
   port map (
     clk_axi => clk_axi,
+    rst_axi_n => rst_axi_n,
     axi_m2s => axi_m2s,
     axi_s2m => axi_s2m,
 
     clk_axi_lite_vec => clk_axi_lite_vec,
+    rst_axi_lite_vec_n => (others => rst_axi_n),
     axi_lite_m2s_vec => axi_lite_m2s_vec,
     axi_lite_s2m_vec => axi_lite_s2m_vec
   );

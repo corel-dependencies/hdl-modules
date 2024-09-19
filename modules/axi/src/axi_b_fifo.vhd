@@ -29,14 +29,16 @@ entity axi_b_fifo is
   );
   port (
     clk : in std_logic;
+    rst_n : in std_ulogic;
     --
     input_m2s : in axi_m2s_b_t;
-    input_s2m : out axi_s2m_b_t := axi_s2m_b_init;
+    input_s2m : out axi_s2m_b_t;
     --
-    output_m2s : out axi_m2s_b_t := axi_m2s_b_init;
+    output_m2s : out axi_m2s_b_t;
     output_s2m : in axi_s2m_b_t;
-    -- Only need to assign the clock if generic asynchronous is "True"
-    clk_input : in std_logic := '0'
+    -- Only need to assign the clock and reset if generic asynchronous is "True"
+    clk_input : in std_logic := '0';
+    rst_input_n : in std_ulogic := '0'
   );
 end entity;
 
@@ -77,8 +79,11 @@ begin
       )
       port map(
         clk => clk,
+        rst_n => rst_n,
         clk_read => clk_input,
+        rst_read_n => rst_input_n,
         clk_write => clk,
+        rst_write_n => rst_n,
         --
         read_ready => input_m2s.ready,
         read_valid => read_valid,

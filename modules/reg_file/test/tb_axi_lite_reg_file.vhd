@@ -41,24 +41,25 @@ end entity;
 architecture tb of tb_axi_lite_reg_file is
 
   constant regs : reg_definition_vec_t(0 to 15 - 1) := (
-    (idx => 0, reg_type => r),
-    (idx => 1, reg_type => r),
-    (idx => 2, reg_type => r),
-    (idx => 3, reg_type => w),
-    (idx => 4, reg_type => w),
-    (idx => 5, reg_type => w),
-    (idx => 6, reg_type => r_w),
-    (idx => 7, reg_type => r_w),
-    (idx => 8, reg_type => r_w),
-    (idx => 9, reg_type => wpulse),
-    (idx => 10, reg_type => wpulse),
-    (idx => 11, reg_type => wpulse),
-    (idx => 12, reg_type => r_wpulse),
-    (idx => 13, reg_type => r_wpulse),
-    (idx => 14, reg_type => r_wpulse)
+    (idx => 0, reg_type => r, atomic_lock => 0),
+    (idx => 1, reg_type => r, atomic_lock => 0),
+    (idx => 2, reg_type => r, atomic_lock => 0),
+    (idx => 3, reg_type => w, atomic_lock => 0),
+    (idx => 4, reg_type => w, atomic_lock => 0),
+    (idx => 5, reg_type => w, atomic_lock => 0),
+    (idx => 6, reg_type => r_w, atomic_lock => 0),
+    (idx => 7, reg_type => r_w, atomic_lock => 0),
+    (idx => 8, reg_type => r_w, atomic_lock => 0),
+    (idx => 9, reg_type => wpulse, atomic_lock => 0),
+    (idx => 10, reg_type => wpulse, atomic_lock => 0),
+    (idx => 11, reg_type => wpulse, atomic_lock => 0),
+    (idx => 12, reg_type => r_wpulse, atomic_lock => 0),
+    (idx => 13, reg_type => r_wpulse, atomic_lock => 0),
+    (idx => 14, reg_type => r_wpulse, atomic_lock => 0)
   );
 
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic;
 
   signal hardcoded_m2s, axi_lite_m2s : axi_lite_m2s_t;
   signal axi_lite_s2m : axi_lite_s2m_t;
@@ -76,6 +77,7 @@ begin
 
   test_runner_watchdog(runner, 2 ms);
   clk <= not clk after 2 ns;
+  rst_n <= '0', '1' after 4 ns;
 
 
   ------------------------------------------------------------------------------
@@ -173,6 +175,8 @@ begin
     test_runner_setup(runner, runner_cfg);
     rnd.InitSeed(rnd'instance_name);
 
+    wait until rst_n;
+
     if run("random_read_and_write") then
       for list_idx in regs'range loop
         fabric_data(list_idx) := rnd.RandSLV(fabric_data(0)'length);
@@ -245,6 +249,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
       --
       axi_lite_m2s => axi_lite_m2s,
       axi_lite_s2m => axi_lite_s2m,

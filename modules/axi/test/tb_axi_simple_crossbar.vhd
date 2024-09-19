@@ -37,6 +37,7 @@ architecture tb of tb_axi_simple_crossbar is
   constant clk_period : time := 5 ns;
 
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic;
 
   constant axi_port_data_width : integer := 32;
   type bus_master_vec_t is array (integer range <>) of bus_master_t;
@@ -63,6 +64,7 @@ architecture tb of tb_axi_simple_crossbar is
 begin
 
   clk <= not clk after clk_period / 2;
+  rst_n <= '0', '1' after 2*clk_period;
   test_runner_watchdog(runner, 1 ms);
 
 
@@ -82,6 +84,8 @@ begin
   begin
     test_runner_setup(runner, runner_cfg);
     rnd.InitSeed(rnd'instance_name);
+
+    wait until rst_n;
 
     buf := allocate(memory, num_words * bytes_per_word);
 
@@ -185,6 +189,7 @@ begin
       )
       port map(
         clk => clk,
+        rst_n => rst_n,
         --
         input_ports_m2s => inputs_read_m2s,
         input_ports_s2m => inputs_read_s2m,
@@ -200,6 +205,7 @@ begin
       )
       port map(
         clk => clk,
+        rst_n => rst_n,
         --
         input_ports_m2s => inputs_write_m2s,
         input_ports_s2m => inputs_write_s2m,
@@ -246,6 +252,7 @@ begin
       )
       port map (
         clk => clk,
+        rst_n => rst_n,
         --
         axi_read_m2s => output_m2s.read,
         axi_read_s2m => output_s2m.read,
@@ -262,6 +269,7 @@ begin
       )
       port map(
         clk => clk,
+        rst_n => rst_n,
         --
         input_ports_m2s => inputs_read_m2s,
         input_ports_s2m => inputs_read_s2m,
@@ -278,6 +286,7 @@ begin
       )
       port map(
         clk => clk,
+        rst_n => rst_n,
         --
         input_ports_m2s => inputs_write_m2s,
         input_ports_s2m => inputs_write_s2m,

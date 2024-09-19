@@ -37,6 +37,7 @@ end entity;
 
 architecture tb of tb_axi_to_axi_lite_bus_error is
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic;
 
   signal axi_m2s : axi_m2s_t;
   signal axi_s2m : axi_s2m_t;
@@ -51,6 +52,7 @@ begin
 
   test_runner_watchdog(runner, 10 ms);
   clk <= not clk after 2 ns;
+  rst_n <= '0', '1' after 4 ns;
 
 
   ------------------------------------------------------------------------------
@@ -90,6 +92,8 @@ begin
   begin
     test_runner_setup(runner, runner_cfg);
 
+    wait until rst_n;
+
     -- All should be okay before test
     test_ar(correct_len, correct_size, axi_resp_okay);
     test_aw(correct_len, correct_size, axi_resp_okay);
@@ -119,6 +123,7 @@ begin
     )
     port map (
       clk => clk,
+      rst_n => rst_n,
 
       axi_m2s => axi_m2s,
       axi_s2m => axi_s2m,

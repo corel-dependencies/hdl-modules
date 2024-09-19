@@ -28,32 +28,37 @@ use common.types_pkg.all;
 library math;
 use math.math_pkg.all;
 
-
 entity resync_cycles is
   generic (
     counter_width : positive;
-    active_level : std_logic := '1'
-  );
+    active_level  : std_logic := '1'
+    );
   port (
-    clk_in : in std_logic;
-    data_in : in std_logic;
+    clk_in   : in std_logic;
+    rst_in_n : in std_ulogic;
+    data_in  : in std_logic;
 
-    clk_out : in std_logic;
-    data_out : out std_logic := (not active_level)
-  );
+    clk_out   : in  std_logic;
+    rst_out_n : in  std_ulogic;
+    data_out  : out std_logic
+    );
 end entity;
 
 architecture a of resync_cycles is
-  signal counter_in, counter_in_resync, counter_out : unsigned(counter_width - 1 downto 0) := (others => '0');
+  signal counter_in, counter_in_resync, counter_out : unsigned(counter_width - 1 downto 0);
 begin
 
   ------------------------------------------------------------------------------
-  input : process
+  input : process (clk_in, rst_in_n) is
   begin
-    wait until rising_edge(clk_in);
+    if not rst_in_n then
+      counter_in <= (others => '0');
+    elsif rising_edge(clk_in) then
 
-    if data_in = active_level then
-      counter_in <= (counter_in + 1);
+      if data_in = active_level then
+        counter_in <= (counter_in + 1);
+      end if;
+
     end if;
   end process;
 
@@ -62,26 +67,33 @@ begin
   counter_in_resync_inst : entity work.resync_counter
     generic map (
       width => counter_width
-    )
+      )
     port map (
-      clk_in => clk_in,
+      clk_in     => clk_in,
+      rst_in_n   => rst_in_n,
       counter_in => counter_in,
 
-      clk_out => clk_out,
+      clk_out     => clk_out,
+      rst_out_n   => rst_out_n,
       counter_out => counter_in_resync
-    );
+      );
 
 
   ------------------------------------------------------------------------------
-  output : process
+  output : process (clk_out, rst_out_n) is
   begin
-    wait until rising_edge(clk_out);
+    if not rst_out_n then
+      data_out    <= not active_level;
+      counter_out <= (others => '0');
+    elsif rising_edge(clk_out) then
 
-    if counter_out /= counter_in_resync then
-      data_out <= active_level;
-      counter_out <= (counter_out + 1);
-    else
-      data_out <= not active_level;
+      if counter_out /= counter_in_resync then
+        data_out    <= active_level;
+        counter_out <= (counter_out + 1);
+      else
+        data_out <= not active_level;
+      end if;
+
     end if;
   end process;
 

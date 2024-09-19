@@ -25,6 +25,7 @@ end entity;
 architecture tb of tb_interrupt_register is
 
   signal clk : std_logic := '0';
+  signal rst_n : std_ulogic;
 
   signal sources, mask, clear, status : reg_t := (others => '0');
   signal trigger : std_logic := '0';
@@ -33,6 +34,7 @@ begin
 
   test_runner_watchdog(runner, 2 ms);
   clk <= not clk after 2 ns;
+  rst_n <= '0', '1' after 2*2 ns;
 
 
   ------------------------------------------------------------------------------
@@ -69,6 +71,8 @@ begin
     end procedure;
   begin
     test_runner_setup(runner, runner_cfg);
+
+    wait until rst_n;
 
     sources <= (0 => '1', 1 => '1', 2 => '1', others => '0');
     wait_a_while;
@@ -108,6 +112,7 @@ begin
   dut : entity work.interrupt_register
     port map (
       clk => clk,
+      rst_n => rst_n,
 
       sources => sources,
       mask => mask,

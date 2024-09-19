@@ -31,6 +31,7 @@ architecture tb of tb_resync_pulse is
   constant sleep_between_pulses : time := 10 * clock_period_slow;
 
   signal clk_in, clk_out : std_logic := '0';
+  signal rst_in_n, rst_out_n : std_logic := '0';
   signal pulse_in, pulse_out : std_logic;
 
   signal num_pulses_out : integer := 0;
@@ -38,13 +39,17 @@ begin
 
   test_runner_watchdog(runner, 10 ms);
   clk_in <= not clk_in after clock_period_medium / 2;
+  rst_in_n <= '0', '1' after 2*clock_period_medium;
 
   clock_out_gen : if output_clock_is_faster generate
     clk_out <= not clk_out after clock_period_fast / 2;
+    rst_out_n <= '0', '1' after 2*clock_period_fast;
   elsif output_clock_is_slower generate
     clk_out <= not clk_out after clock_period_slow / 2;
+    rst_out_n <= '0', '1' after 2*clock_period_slow;
   else generate
     clk_out <= transport clk_in after clock_period_medium / 5;
+    rst_out_n <= '0', '1' after 2*clock_period_medium;
   end generate;
 
 
@@ -52,6 +57,7 @@ begin
   main : process
     procedure test_pulse(expected_num_pulses : integer) is
     begin
+
       wait until rising_edge(clk_in);
       pulse_in <= '1';
 
@@ -72,6 +78,9 @@ begin
     end procedure;
   begin
     test_runner_setup(runner, runner_cfg);
+
+    wait on clk_in until rst_in_n;
+    wait on clk_out until rst_out_n;
 
     for i in 1 to 100 loop
       -- In the case of input_pulse_overload we will send more than one input pulse per call to test_pulse().
@@ -98,9 +107,11 @@ begin
     )
     port map (
       clk_in => clk_in,
+      rst_in_n => rst_in_n,
       pulse_in => pulse_in,
 
       clk_out => clk_out,
+      rst_out_n => rst_out_n,
       pulse_out => pulse_out);
 
 end architecture;
