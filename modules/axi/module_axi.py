@@ -6,9 +6,8 @@
 # https://gitlab.com/tsfpga/tsfpga
 # --------------------------------------------------------------------------------------------------
 
-from tsfpga.module import BaseModule
+from tsfpga.module import BaseModule, get_hdl_modules
 from tsfpga.vivado.project import VivadoNetlistProject
-from examples.tsfpga_example_env import get_tsfpga_modules
 
 
 class Module(BaseModule):
@@ -76,7 +75,7 @@ class Module(BaseModule):
 
     def get_build_projects(self):
         projects = []
-        modules = get_tsfpga_modules(names_include=[self.name, "common", "math"])
+        modules = get_hdl_modules(names_include=[self.name, "common", "math"])
         part = "xc7z020clg400-1"
 
         generics = dict(
