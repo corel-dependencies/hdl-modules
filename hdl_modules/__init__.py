@@ -42,7 +42,7 @@ def get_hdl_modules(
     from tsfpga.module import get_modules
 
     return get_modules(
-        modules_folders=[REPO_ROOT / "modules"],
+        modules_folders=[REPO_ROOT / "hdl_modules/modules"],
         names_include=names_include,
         names_avoid=names_avoid,
         library_name_has_lib_suffix=False,

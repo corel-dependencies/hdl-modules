@@ -1,5 +1,6 @@
 [build-system]
 requires = ["setuptools>=45", "setuptools_scm>=6.2"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "hdl_modules"
@@ -13,7 +14,7 @@ include-package-data = false
 find = {include = ["hdl_modules*"]}
 
 [tool.setuptools.package-data]
-"*" = ["*.vhd"]
+"*" = ["*.vhd", "*.tcl"]
 
 
 [tool.black]
