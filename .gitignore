@@ -9,3 +9,5 @@
 .vscode
 
 generated
+build
+.DS_Store
