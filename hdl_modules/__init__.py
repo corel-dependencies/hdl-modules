@@ -10,6 +10,7 @@
 # Standard libraries
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
+import importlib.metadata
 
 # Local folder libraries
 from .about import get_short_slogan
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
 REPO_ROOT = Path(__file__).parent.parent.resolve()
 
-__version__ = "5.0.2-dev"
+__version__ = importlib.metadata.version(__package__ or __name__)
 __doc__ = get_short_slogan()  # pylint: disable=redefined-builtin
 
 
@@ -44,7 +45,7 @@ def get_hdl_modules(
     from tsfpga.module import get_modules
 
     return get_modules(
-        modules_folders=[REPO_ROOT / "modules"],
+        modules_folders=[REPO_ROOT / "hdl_modules/modules"],
         names_include=names_include,
         names_avoid=names_avoid,
         library_name_has_lib_suffix=False,
