@@ -334,10 +334,12 @@ begin
             end if;
 
           when b =>
+            set_axi_response(v_write_idx);
             axi_lite_s2m.write.b.valid <= '1';
             if axi_lite_m2s.write.b.ready and axi_lite_s2m.write.b.valid then
               axi_lite_s2m.write.aw.ready <= '1';
               axi_lite_s2m.write.b.valid  <= '0';
+              axi_lite_s2m.write.b.resp <= axi_resp_slverr;
 
               write_state <= aw;
             end if;
