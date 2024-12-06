@@ -11,7 +11,12 @@
 -- Based on the document "ARM IHI 0022E (ID022613): AMBA AXI and ACE Protocol Specification",
 -- available here: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ihi0022e/index.html
 -- -------------------------------------------------------------------------------------------------
-
+--
+-- Changes:
+-- *_sz are actual values, not max values.  Redefined to fit current use-case
+-- (max values allowed by aurora8b10b).
+-- Nico De Simone  <desimone@desy.de>
+--
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -23,18 +28,14 @@ use math.math_pkg.all;
 package axi_pkg is
 
   -- Data field (RDATA or WDATA).
-  -- The width value below is a max value, implementation should only take into regard the bits
-  -- that are actually used.
-  constant axi_data_sz : positive := 128;
+  constant axi_data_sz : positive := 32;
 
   ------------------------------------------------------------------------------
   -- A (Address Read and Address Write) channels
   ------------------------------------------------------------------------------
 
   -- ID field (ARID, AWID, BID as well as RID if using AXI3)
-  -- The width value below is a max value, implementation should only take into regard the bits
-  -- that are actually used.
-  constant axi_id_sz : positive := 24;
+  constant axi_id_sz : positive := 6;
 
   -- Address field (ARADDR or AWADDR).
   -- The width value below is a max value, implementation should only take into regard the bits
