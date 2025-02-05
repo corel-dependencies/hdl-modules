@@ -43,14 +43,15 @@ begin
   input_ports_loop : for input_idx in input_ports_m2s'range generate
     input_ports_read_m2s(input_idx) <= input_ports_m2s(input_idx).read;
     input_ports_s2m(input_idx).read <= input_ports_read_s2m(input_idx);
-    output_m2s.read                 <= output_read_m2s;
-    output_read_s2m                 <= output_s2m.read;
 
     input_ports_write_m2s(input_idx) <= input_ports_m2s(input_idx).write;
     input_ports_s2m(input_idx).write <= input_ports_write_s2m(input_idx);
-    output_m2s.write                 <= output_write_m2s;
-    output_write_s2m                 <= output_s2m.write;
   end generate;
+
+  output_m2s.read                 <= output_read_m2s;
+  output_m2s.write                 <= output_write_m2s;
+  output_read_s2m                 <= output_s2m.read;
+  output_write_s2m                 <= output_s2m.write;
 
   axi_lite_simple_read_crossbar_inst : entity work.axi_lite_simple_read_crossbar
     generic map (

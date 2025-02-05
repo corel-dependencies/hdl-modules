@@ -320,10 +320,10 @@ begin
 
                 else
                   -- not using write strobe => write all bytes.
-                  v_data := axi_lite_m2s.write.w.data(v_data'range);
+                  v_data := axi_lite_m2s.write.w.data;
                 end if;
 
-                regs_down(v_write_idx)      <= axi_lite_m2s.write.w.data(regs_down(0)'range);
+                regs_down(v_write_idx)      <= v_data;
                 reg_was_written(v_write_idx) <= '1';
               end if;
 
