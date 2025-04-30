@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hdl_modules"
-version = "5.0.2-dev+sstcam.2"
+version = "5.0.2-dev"
 dependencies = []
 
 [tool.setuptools]
