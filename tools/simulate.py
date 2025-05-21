@@ -7,7 +7,6 @@
 # https://github.com/hdl-modules/hdl-modules
 # --------------------------------------------------------------------------------------------------
 
-# Standard libraries
 import os
 import sys
 from pathlib import Path
@@ -16,15 +15,17 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent.resolve()
 sys.path.insert(0, str(REPO_ROOT))
 
-# Import before others since it modifies PYTHONPATH. pylint: disable=unused-import
+# Import before others since it modifies PYTHONPATH.
 import tools.tools_pythonpath  # noqa: F401
 
-# Third party libraries
-from tsfpga.examples.simulate import find_git_test_filters
-from tsfpga.examples.simulation_utils import SimulationProject, get_arguments_cli
+from tsfpga.examples.simulation_utils import (
+    NoVcsDiffTestsFound,
+    SimulationProject,
+    find_git_test_filter,
+    get_arguments_cli,
+)
 from tsfpga.module import get_modules
 
-# First party libraries
 from tools import tools_env
 
 
@@ -35,28 +36,11 @@ def main() -> None:
     modules = get_modules(modules_folder=tools_env.HDL_MODULES_DIRECTORY)
 
     if args.vcs_minimal:
-        if args.test_patterns != "*":
-            sys.exit(
-                "Can not specify a test pattern when using the --vcs-minimal flag."
-                f" Got {args.test_patterns}",
-            )
-
-        test_filters = find_git_test_filters(
-            args=args,
-            repo_root=tools_env.REPO_ROOT,
-            modules=modules,
-            reference_branch="origin/main",
-        )
-        if not test_filters:
+        try:
+            args = find_git_test_filter(args=args, repo_root=tools_env.REPO_ROOT, modules=modules)
+        except NoVcsDiffTestsFound:
             print("Nothing to run. Appears to be no VHDL-related git diff.")
             return
-
-        # Override the test pattern argument to VUnit
-        args.test_patterns = test_filters
-        print(f"Running VUnit with test pattern {args.test_patterns}")
-
-        # Enable minimal compilation in VUnit
-        args.minimal = True
 
     # Some of our test names get really long (tb_asynchronous_fifo specifically),
     # resulting in too long paths: "OSError: [Errno 36] File name too long".

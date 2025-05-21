@@ -15,16 +15,23 @@
 -- the ``data_queue``.
 -- Each ``AW`` transaction will result in a check that the eventually returned ``BID`` is correct.
 --
--- .. note::
+-- This BFM will also perform protocol checking to verify that the downstream AXI slave is
+-- performing everything correctly.
 --
---   This BFM will inject random handshake jitter/stalling on the AXI channels for good
---   verification coverage.
---   Modify the ``aw_stall_config``, ``w_stall_config`` and ``b_stall_config`` generics to change
---   the behavior.
---   You can also set ``seed`` to something unique in order to vary the randomization in each
---   simulation run.
---   This can be done conveniently with the
---   :meth:`add_vunit_config() <tsfpga.module.BaseModule.add_vunit_config>` method if using tsfpga.
+--
+-- Randomization
+-- _____________
+--
+-- This BFM will inject random handshake stall/jitter, for good verification coverage.
+-- Modify the ``aw_stall_config``, ``w_stall_config`` and ``b_stall_config`` generics
+-- to get your desired behavior.
+-- The random seed is provided by a VUnit mechanism
+-- (see the "seed" portion of `this document <https://vunit.github.io/run/user_guide.html>`__).
+-- Use the ``--seed`` command line argument if you need to set a static seed.
+--
+--
+-- Unaligned transaction length
+-- ______________________________________
 --
 -- The byte length of the transactions (as set in the ``job`` as well as by the length of the
 -- ``data_queue`` arrays) does not need to be aligned with the data width of the bus.
@@ -32,12 +39,13 @@
 --
 -- The ``job`` address, however, is assumed to be aligned with bus data width.
 --
+--
+-- Transaction order
+-- _________________
+--
 -- Note that data can be pushed to ``data_queue`` before the corresponding job is pushed.
 -- This data will be pushed to the AXI ``W`` channel straight away, possibly before the ``AW``
 -- transaction (unless in AXI3 mode).
---
--- This BFM will also perform protocol checking to verify that the downstream AXI slave is
--- performing everything correctly.
 -- -------------------------------------------------------------------------------------------------
 
 library ieee;
@@ -64,30 +72,27 @@ use work.axi_bfm_pkg.all;
 entity axi_write_master is
   generic (
     -- The desired width of the 'AWID' and 'BID' signals, as well as 'WID' if using AXI3.
-    id_width : natural range 0 to axi_id_sz;
+    id_width : axi_id_width_t;
     -- The desired width of the 'WDATA' signal.
-    data_width : positive range 8 to axi_data_sz;
+    data_width : axi_data_width_t;
     -- Push jobs (SLV of axi_master_bfm_job_t) to this queue. Each job pushed will result in an
     -- AW transaction and eventually a B check.
     job_queue : queue_t;
     -- Push data (integer_array_t with push_ref()) to this queue. Each element should be an
     -- unsigned byte. Little endian byte order is assumed.
     data_queue : queue_t;
-    -- Stall configuration for the AW channel master
+    -- Stall configuration for the AW channel master.
     aw_stall_config : stall_configuration_t := default_address_stall_config;
-    -- Stall configuration for the W channel master
+    -- Stall configuration for the W channel master.
     w_stall_config : stall_configuration_t := default_data_stall_config;
     -- Stall configuration for the B channel slave
     b_stall_config : stall_configuration_t := default_data_stall_config;
-    -- Random seed for handshaking stall/jitter.
-    -- Set to something unique in order to vary the random sequence.
-    seed : natural := 0;
     -- Suffix for error log messages. Can be used to differentiate between multiple instances.
     logger_name_suffix : string := "";
     -- When this generic is set, 'WID' will be assigned to same ID as corresponding
     -- 'AW' transaction.
     -- It also changes the transaction behavior, so that 'W' data will never be sent before
-    -- the 'AW' transaction
+    -- the 'AW' transaction.
     enable_axi3 : boolean := false;
     -- When 'AWVALID' or 'WVALID' is zero, the associated output ports will be driven with
     -- this value.
@@ -162,9 +167,7 @@ begin
     ------------------------------------------------------------------------------
     handshake_master_inst : entity work.handshake_master
       generic map (
-        stall_config => aw_stall_config,
-        seed => seed,
-        logger_name_suffix => " - axi_write_master - AW" & logger_name_suffix
+        stall_config => aw_stall_config
       )
       port map (
         clk => clk,
@@ -240,7 +243,7 @@ begin
       -- Set the WID only when bus is valid
       axi_write_m2s.w.id(id_width - 1 downto 0) <=
         to_unsigned(current_w_id, id_width) when axi_write_m2s.w.valid
-        else (others => 'X');
+        else (others => drive_invalid_value);
 
     end generate;
 
@@ -251,7 +254,6 @@ begin
         data_width => data_width,
         data_queue => w_data_queue,
         stall_config => w_stall_config,
-        seed => seed,
         logger_name_suffix => " - axi_write_master - W" & logger_name_suffix,
         drive_invalid_value => drive_invalid_value
       )
@@ -292,9 +294,7 @@ begin
     ------------------------------------------------------------------------------
     handshake_slave_inst : entity work.handshake_slave
       generic map (
-        stall_config => b_stall_config,
-        seed => seed,
-        logger_name_suffix => " - axi_write_master - B" & logger_name_suffix
+        stall_config => b_stall_config
       )
       port map (
         clk => clk,
@@ -309,7 +309,7 @@ begin
       generic map (
         id_width => id_width,
         user_width => axi_write_s2m.b.resp'length,
-        logger_name_suffix => " - axi_write_master - B"
+        logger_name_suffix => " - axi_write_master - B" & logger_name_suffix
       )
       port map (
         clk => clk,

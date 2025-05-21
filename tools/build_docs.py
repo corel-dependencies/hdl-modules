@@ -7,7 +7,6 @@
 # https://github.com/hdl-modules/hdl-modules
 # --------------------------------------------------------------------------------------------------
 
-# Standard libraries
 import shutil
 import sys
 from pathlib import Path
@@ -17,10 +16,18 @@ from typing import TYPE_CHECKING
 REPO_ROOT = Path(__file__).parent.parent.resolve()
 sys.path.insert(0, str(REPO_ROOT))
 
-# Import before others since it modifies PYTHONPATH. pylint: disable=unused-import
+# Import before others since it modifies PYTHONPATH.
 import tools.tools_pythonpath  # noqa: F401
 
-# Third party libraries
+from hdl_registers.generator.cpp.header import CppHeaderGenerator
+from hdl_registers.generator.cpp.implementation import CppImplementationGenerator
+from hdl_registers.generator.cpp.interface import CppInterfaceGenerator
+from hdl_registers.generator.vhdl.axi_lite.wrapper import VhdlAxiLiteWrapperGenerator
+from hdl_registers.generator.vhdl.record_package import VhdlRecordPackageGenerator
+from hdl_registers.generator.vhdl.register_package import VhdlRegisterPackageGenerator
+from hdl_registers.generator.vhdl.simulation.read_write_package import (
+    VhdlSimulationReadWritePackageGenerator,
+)
 from pybadges import badge
 from tsfpga import TSFPGA_DOC
 from tsfpga.module import get_modules
@@ -28,13 +35,11 @@ from tsfpga.module_documentation import ModuleDocumentation
 from tsfpga.system_utils import create_directory, create_file, read_file
 from tsfpga.tools.sphinx_doc import build_sphinx, generate_release_notes
 
-# First party libraries
-from hdl_modules import REPO_ROOT
+from hdl_modules import REPO_ROOT, get_hdl_modules
 from hdl_modules.about import REPOSITORY_URL, WEBSITE_URL, get_readme_rst, get_short_slogan
 from tools import tools_env
 
 if TYPE_CHECKING:
-    # Third party libraries
     from tsfpga.module import BaseModule
 
 GENERATED_SPHINX = tools_env.HDL_MODULES_GENERATED / "sphinx_rst"
@@ -49,6 +54,8 @@ def main() -> None:
     generate_and_create_release_notes()
 
     generate_bibtex()
+
+    generate_register_artifacts()
 
     generate_documentation()
 
@@ -75,10 +82,17 @@ def generate_and_create_release_notes() -> None:
     )
 
     rst = f"""
+.. _release_notes:
+
 Release notes
 =============
 
-Release history and changelog for the ``hdl-modules`` project.
+Release history and changelog for the hdl-modules project.
+We follow the `semantic versioning <https://semver.org/>`__ scheme ``MAJOR.MINOR.PATCH``:
+
+* ``MAJOR`` is bumped when incompatible API changes are made.
+* ``MINOR`` is bumped when functionality is added in a backward-compatible manner.
+* ``PATCH`` is bumped when backward-compatible bug fixes are made.
 
 {release_notes_rst}
 """
@@ -110,6 +124,47 @@ def generate_bibtex() -> None:
     create_file(GENERATED_SPHINX / "bibtex.rst", rst)
 
 
+def generate_register_artifacts() -> None:
+    """
+    Generate the register artifacts that are part of the documentation.
+    Note that HTML pages are generated separately.
+    """
+    for module in get_hdl_modules():
+        register_list = module.registers
+        if register_list is None:
+            continue
+
+        output_folder = GENERATED_SPHINX / "modules" / register_list.name
+
+        VhdlRegisterPackageGenerator(
+            register_list=register_list, output_folder=output_folder / "vhdl"
+        ).create_if_needed()
+
+        VhdlRecordPackageGenerator(
+            register_list=register_list, output_folder=output_folder / "vhdl"
+        ).create_if_needed()
+
+        VhdlAxiLiteWrapperGenerator(
+            register_list=register_list, output_folder=output_folder / "vhdl"
+        ).create_if_needed()
+
+        VhdlSimulationReadWritePackageGenerator(
+            register_list=register_list, output_folder=output_folder / "vhdl"
+        ).create_if_needed()
+
+        CppInterfaceGenerator(
+            register_list=register_list, output_folder=output_folder / "cpp" / "include"
+        ).create_if_needed()
+
+        CppHeaderGenerator(
+            register_list=register_list, output_folder=output_folder / "cpp" / "include"
+        ).create_if_needed()
+
+        CppImplementationGenerator(
+            register_list=register_list, output_folder=output_folder / "cpp"
+        ).create_if_needed()
+
+
 def generate_documentation() -> None:
     index_rst = f"""
 {get_readme()}
@@ -128,6 +183,7 @@ def generate_documentation() -> None:
   :hidden:
 
   getting_started
+  unresolved_types
 
 
 .. toctree::
@@ -142,7 +198,7 @@ def generate_documentation() -> None:
     def sort_key(module: "BaseModule") -> str:
         return module.name
 
-    modules_sorted: list["BaseModule"] = sorted(modules, key=sort_key)
+    modules_sorted: list[BaseModule] = sorted(modules, key=sort_key)
 
     for module in modules_sorted:
         index_rst += f"  modules/{module.name}/{module.name}\n"
@@ -186,9 +242,9 @@ def get_readme() -> str:
     readme_rst = get_readme_rst(include_extra_for_github=True)
     if read_file(tools_env.REPO_ROOT / "readme.rst") != readme_rst:
         file_path = create_file(GENERATED_SPHINX / "readme.txt", readme_rst)
-        assert (
-            False
-        ), f"readme.rst in repo root not correct. Compare to reference in python: {file_path}"
+        raise ValueError(
+            f"readme.rst in repo root not correct. Compare to reference in python: {file_path}"
+        )
 
     return get_readme_rst(include_extra_for_website=True)
 

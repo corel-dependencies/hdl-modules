@@ -13,14 +13,15 @@
 -- Each element in the integer array should be an unsigned byte.
 -- Little endian byte order is assumed.
 --
--- .. note::
 --
---   This BFM will inject random handshake jitter/stalling for good verification coverage.
---   Modify the ``stall_config`` generic to change the behavior.
---   You can also set ``seed`` to something unique in order to vary the randomization in each
---   simulation run.
---   This can be done conveniently with the
---   :meth:`add_vunit_config() <tsfpga.module.BaseModule.add_vunit_config>` method if using tsfpga.
+-- Randomization
+-- _____________
+--
+-- This BFM can inject random handshake stall/jitter, for good verification coverage.
+-- Modify the ``stall_config`` generic to get your desired behavior.
+-- The random seed is provided by a VUnit mechanism
+-- (see the "seed" portion of `this document <https://vunit.github.io/run/user_guide.html>`__).
+-- Use the ``--seed`` command line argument if you need to set a static seed.
 --
 --
 -- Unaligned packet length
@@ -35,7 +36,7 @@
 -- User signalling
 -- _______________
 --
--- This BFM optionally supports sending auxillary data on the ``user`` port also.
+-- This BFM optionally supports sending auxiliary data on the ``user`` port also.
 -- Enable by setting a non-zero ``user_width`` and a valid ``user_queue``.
 -- User data is pushed as a :doc:`VUnit integer_array <vunit:data_types/integer_array>`
 -- just as for the regular data.
@@ -67,15 +68,12 @@ entity axi_stream_master is
     -- Optionally enable the 'user' port by setting a non-zero width here.
     -- Must also set the 'user_queue' generic to a valid queue.
     user_width : natural := 0;
-    -- Push auxillary user data (integer_array_t with push_ref()) to this queue.
+    -- Push auxiliary user data (integer_array_t with push_ref()) to this queue.
     -- Must also se the 'user_width' generic to a non-zero value.
     -- The integer arrays will be deallocated after this BFM is done with them.
     user_queue : queue_t := null_queue;
     -- Assign non-zero to randomly insert jitter/stalling in the data stream.
     stall_config : stall_configuration_t := zero_stall_configuration;
-    -- Random seed for handshaking stall/jitter.
-    -- Set to something unique in order to vary the random sequence.
-    seed : natural := 0;
     -- Suffix for error log messages. Can be used to differentiate between multiple instances.
     logger_name_suffix : string := "";
     -- The 'strobe' is usually a "byte strobe", but the strobe unit width can be modified for cases
@@ -163,7 +161,8 @@ begin
 
       data_value := get(arr=>data_packet, idx=>byte_idx);
       data_int((byte_lane_idx + 1) * 8 - 1 downto byte_lane_idx * 8) <=
-        std_logic_vector(to_unsigned(data_value, 8));
+        std_ulogic_vector(to_unsigned(data_value, 8)
+      );
 
       strobe_byte(byte_lane_idx) <= '1';
 
@@ -194,9 +193,7 @@ begin
   ------------------------------------------------------------------------------
   handshake_master_inst : entity work.handshake_master
     generic map(
-      stall_config => stall_config,
-      seed => seed,
-      logger_name_suffix => base_error_message
+      stall_config => stall_config
     )
     port map(
       clk => clk,
@@ -280,7 +277,7 @@ begin
         byte_lane_idx := byte_idx mod user_bytes_per_beat;
 
         user_value := get(arr=>user_packet, idx=>byte_idx);
-        user_int((byte_lane_idx + 1) * 8 - 1 downto byte_lane_idx * 8) <= std_logic_vector(
+        user_int((byte_lane_idx + 1) * 8 - 1 downto byte_lane_idx * 8) <= std_ulogic_vector(
           to_unsigned(user_value, 8)
         );
 

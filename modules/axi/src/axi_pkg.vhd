@@ -29,18 +29,25 @@ package axi_pkg is
 
   -- Data field (RDATA or WDATA).
   constant axi_data_sz : positive := 32;
+  -- constant axi_data_sz : positive := 128;
+  subtype axi_data_width_t is positive range 8 to axi_data_sz;
 
   ------------------------------------------------------------------------------
   -- A (Address Read and Address Write) channels
   ------------------------------------------------------------------------------
 
   -- ID field (ARID, AWID, BID as well as RID if using AXI3)
+  -- The width value below is a max value, implementation should only take into regard the bits
+  -- that are actually used.
   constant axi_id_sz : positive := 6;
+  subtype axi_id_width_t is natural range 0 to axi_id_sz;
 
   -- Address field (ARADDR or AWADDR).
   -- The width value below is a max value, implementation should only take into regard the bits
   -- that are actually used.
   constant axi_a_addr_sz : positive := 32;
+  -- constant axi_a_addr_sz : positive := 64;
+  subtype axi_address_width_t is positive range 1 to axi_a_addr_sz;
 
   -- Length field (ARLEN or AWLEN)
   -- Number of beats (data transfers) in this burst = AxLEN + 1
@@ -68,7 +75,7 @@ package axi_pkg is
   constant axi_a_size_sz : positive := 3;
   subtype axi_a_size_t is u_unsigned(axi_a_size_sz - 1 downto 0);
 
-  function to_size(data_width_bits : positive range 8 to axi_data_sz) return axi_a_size_t;
+  function to_size(data_width_bits : axi_data_width_t) return axi_a_size_t;
 
   -- Burst field (ARBURST or AWBURST)
   constant axi_a_burst_sz : positive := 2;
@@ -146,19 +153,19 @@ package axi_pkg is
     burst => (others => '-')
   );
   function axi_m2s_a_sz(
-    id_width : natural range 0 to axi_id_sz; addr_width : positive range 1 to axi_a_addr_sz
+    id_width : axi_id_width_t; addr_width : axi_address_width_t
   ) return positive;
   type axi_m2s_a_vec_t is array (integer range <>) of axi_m2s_a_t;
 
   function to_slv(
     data : axi_m2s_a_t;
-    id_width : natural range 0 to axi_id_sz;
-    addr_width : positive range 1 to axi_a_addr_sz
+    id_width : axi_id_width_t;
+    addr_width : axi_address_width_t
   ) return std_ulogic_vector;
   function to_axi_m2s_a(
     data : std_ulogic_vector;
-    id_width : natural range 0 to axi_id_sz;
-    addr_width : positive range 1 to axi_a_addr_sz
+    id_width : axi_id_width_t;
+    addr_width : axi_address_width_t
   ) return axi_m2s_a_t;
 
   -- Record for the AR/AW signals in the slave-to-master direction.
@@ -183,8 +190,8 @@ package axi_pkg is
   -- that are actually used.
   constant axi_w_strb_sz : positive := axi_data_sz / 8;
 
-  function to_strb(data_width : positive range 8 to axi_data_sz) return std_ulogic_vector;
-  function axi_w_strb_width(data_width : positive range 8 to axi_data_sz) return positive;
+  function to_strb(data_width : axi_data_width_t) return std_ulogic_vector;
+  function axi_w_strb_width(data_width : axi_data_width_t) return positive;
 
   -- Record for the W signals in the master-to-slave direction.
   type axi_m2s_w_t is record
@@ -205,19 +212,19 @@ package axi_pkg is
     id => (others => '-')
   );
   function axi_m2s_w_sz(
-    data_width : positive range 8 to axi_data_sz; id_width : natural range 0 to axi_id_sz := 0
+    data_width : axi_data_width_t; id_width : axi_id_width_t := 0
   ) return positive;
   type axi_m2s_w_vec_t is array (integer range <>) of axi_m2s_w_t;
 
   function to_slv(
     data : axi_m2s_w_t;
-    data_width : positive range 8 to axi_data_sz;
-    id_width : natural range 0 to axi_id_sz := 0
+    data_width : axi_data_width_t;
+    id_width : axi_id_width_t := 0
   ) return std_ulogic_vector;
   function to_axi_m2s_w(
     data : std_ulogic_vector;
-    data_width : positive range 8 to axi_data_sz;
-    id_width : natural range 0 to axi_id_sz := 0
+    data_width : axi_data_width_t;
+    id_width : axi_id_width_t := 0
   ) return axi_m2s_w_t;
 
   -- Record for the W signals in the slave-to-master direction.
@@ -265,14 +272,14 @@ package axi_pkg is
     id => (others => '0'),
     resp => (others => '-')
   );
-  function axi_s2m_b_sz(id_width : natural range 0 to axi_id_sz) return positive;
+  function axi_s2m_b_sz(id_width : axi_id_width_t) return positive;
   type axi_s2m_b_vec_t is array (integer range <>) of axi_s2m_b_t;
 
   function to_slv(
-    data : axi_s2m_b_t; id_width : natural range 0 to axi_id_sz
+    data : axi_s2m_b_t; id_width : axi_id_width_t
   ) return std_ulogic_vector;
   function to_axi_s2m_b(
-    data : std_ulogic_vector; id_width : natural range 0 to axi_id_sz
+    data : std_ulogic_vector; id_width : axi_id_width_t
   ) return axi_s2m_b_t;
 
 
@@ -305,19 +312,19 @@ package axi_pkg is
     last => '-'
   );
   function axi_s2m_r_sz(
-    data_width : positive range 8 to axi_data_sz; id_width : natural range 0 to axi_id_sz
+    data_width : axi_data_width_t; id_width : axi_id_width_t
   )  return positive;
   type axi_s2m_r_vec_t is array (integer range <>) of axi_s2m_r_t;
 
   function to_slv(
     data : axi_s2m_r_t;
-    data_width : positive range 8 to axi_data_sz;
-    id_width : natural range 0 to axi_id_sz
+    data_width : axi_data_width_t;
+    id_width : axi_id_width_t
   ) return std_ulogic_vector;
   function to_axi_s2m_r(
     data : std_ulogic_vector;
-    data_width : positive range 8 to axi_data_sz;
-    id_width : natural range 0 to axi_id_sz
+    data_width : axi_data_width_t;
+    id_width : axi_id_width_t
   ) return axi_s2m_r_t;
 
 
@@ -424,7 +431,7 @@ package body axi_pkg is
     return result;
   end function;
 
-  function to_size(data_width_bits : positive range 8 to axi_data_sz) return axi_a_size_t is
+  function to_size(data_width_bits : axi_data_width_t) return axi_a_size_t is
     constant result : axi_a_size_t := to_unsigned(log2(data_width_bits / 8), axi_a_size_sz);
   begin
     assert sanity_check_axi_data_width(data_width_bits)
@@ -435,7 +442,7 @@ package body axi_pkg is
   end function;
 
   function axi_m2s_a_sz(
-    id_width : natural range 0 to axi_id_sz; addr_width : positive range 1 to axi_a_addr_sz
+    id_width : axi_id_width_t; addr_width : axi_address_width_t
   ) return positive is
   begin
     -- Excluded member: valid
@@ -444,8 +451,8 @@ package body axi_pkg is
 
   function to_slv(
     data : axi_m2s_a_t;
-    id_width : natural range 0 to axi_id_sz;
-    addr_width : positive range 1 to axi_a_addr_sz
+    id_width : axi_id_width_t;
+    addr_width : axi_address_width_t
   ) return std_ulogic_vector is
     variable result : std_ulogic_vector(axi_m2s_a_sz(id_width, addr_width) - 1 downto 0);
     variable lo, hi : natural := 0;
@@ -453,20 +460,20 @@ package body axi_pkg is
     lo := 0;
     if id_width > 0 then
       hi := id_width - 1;
-      result(hi downto lo) := std_logic_vector(data.id(hi downto lo));
+      result(hi downto lo) := std_ulogic_vector(data.id(hi downto lo));
 
       lo := hi + 1;
     end if;
     hi := lo + addr_width - 1;
-    result(hi downto lo) := std_logic_vector(data.addr(addr_width - 1 downto 0));
+    result(hi downto lo) := std_ulogic_vector(data.addr(addr_width - 1 downto 0));
 
     lo := hi + 1;
     hi := lo + data.len'length - 1;
-    result(hi downto lo) := std_logic_vector(data.len);
+    result(hi downto lo) := std_ulogic_vector(data.len);
 
     lo := hi + 1;
     hi := lo + data.size'length - 1;
-    result(hi downto lo) := std_logic_vector(data.size);
+    result(hi downto lo) := std_ulogic_vector(data.size);
 
     lo := hi + 1;
     hi := lo + data.burst'length - 1;
@@ -479,8 +486,8 @@ package body axi_pkg is
 
   function to_axi_m2s_a(
     data : std_ulogic_vector;
-    id_width : natural range 0 to axi_id_sz;
-    addr_width : positive range 1 to axi_a_addr_sz
+    id_width : axi_id_width_t;
+    addr_width : axi_address_width_t
   ) return axi_m2s_a_t is
     constant offset : natural := data'low;
     variable result : axi_m2s_a_t := axi_m2s_a_init;
@@ -489,20 +496,20 @@ package body axi_pkg is
     lo := 0;
     if id_width > 0 then
       hi := id_width - 1;
-      result.id(hi downto lo) := unsigned(data(hi + offset downto lo + offset));
+      result.id(hi downto lo) := u_unsigned(data(hi + offset downto lo + offset));
 
       lo := hi + 1;
     end if;
     hi := lo + addr_width - 1;
-    result.addr(addr_width - 1 downto 0) := unsigned(data(hi + offset downto lo + offset));
+    result.addr(addr_width - 1 downto 0) := u_unsigned(data(hi + offset downto lo + offset));
 
     lo := hi + 1;
     hi := lo + result.len'length - 1;
-    result.len := unsigned(data(hi + offset downto lo + offset));
+    result.len := u_unsigned(data(hi + offset downto lo + offset));
 
     lo := hi + 1;
     hi := lo + result.size'length - 1;
-    result.size := unsigned(data(hi + offset downto lo + offset));
+    result.size := u_unsigned(data(hi + offset downto lo + offset));
 
     lo := hi + 1;
     hi := lo + result.burst'length - 1;
@@ -545,7 +552,7 @@ package body axi_pkg is
     return true;
   end function;
 
-  function to_strb(data_width : positive range 8 to axi_data_sz) return std_ulogic_vector is
+  function to_strb(data_width : axi_data_width_t) return std_ulogic_vector is
     variable result : std_ulogic_vector(axi_w_strb_sz - 1 downto 0) := (others => '0');
   begin
     assert sanity_check_axi_data_width(data_width)
@@ -557,7 +564,7 @@ package body axi_pkg is
     return result;
   end function;
 
-  function axi_w_strb_width(data_width : positive range 8 to axi_data_sz) return positive is
+  function axi_w_strb_width(data_width : axi_data_width_t) return positive is
   begin
     assert sanity_check_axi_data_width(data_width)
       report "Invalid data width, see printout above."
@@ -567,7 +574,7 @@ package body axi_pkg is
   end function;
 
   function axi_m2s_w_sz(
-    data_width : positive range 8 to axi_data_sz; id_width : natural range 0 to axi_id_sz := 0
+    data_width : axi_data_width_t; id_width : axi_id_width_t := 0
   ) return positive is
   begin
     assert sanity_check_axi_data_width(data_width)
@@ -581,8 +588,8 @@ package body axi_pkg is
 
   function to_slv(
     data : axi_m2s_w_t;
-    data_width : positive range 8 to axi_data_sz;
-    id_width : natural range 0 to axi_id_sz := 0
+    data_width : axi_data_width_t;
+    id_width : axi_id_width_t := 0
   ) return std_ulogic_vector is
     constant result_width : positive := axi_m2s_w_sz(data_width=>data_width, id_width=>id_width);
     variable result : std_ulogic_vector(result_width - 1 downto 0) := (others => '0');
@@ -598,7 +605,7 @@ package body axi_pkg is
 
     lo := hi + 1;
     hi := lo + id_width - 1;
-    result(hi downto lo) := std_logic_vector(data.id(id_width - 1 downto 0));
+    result(hi downto lo) := std_ulogic_vector(data.id(id_width - 1 downto 0));
 
     lo := hi + 1;
     hi := lo;
@@ -611,8 +618,8 @@ package body axi_pkg is
 
   function to_axi_m2s_w(
     data : std_ulogic_vector;
-    data_width : positive range 8 to axi_data_sz;
-    id_width : natural range 0 to axi_id_sz := 0
+    data_width : axi_data_width_t;
+    id_width : axi_id_width_t := 0
   ) return axi_m2s_w_t is
     constant offset : natural := data'low;
     variable result : axi_m2s_w_t := axi_m2s_w_init;
@@ -628,7 +635,7 @@ package body axi_pkg is
 
     lo := hi + 1;
     hi := lo + id_width - 1;
-    result.id(id_width - 1 downto 0) := unsigned(data(hi + offset downto lo + offset));
+    result.id(id_width - 1 downto 0) := u_unsigned(data(hi + offset downto lo + offset));
 
     lo := hi + 1;
     hi := lo;
@@ -641,14 +648,14 @@ package body axi_pkg is
   ------------------------------------------------------------------------------
 
   ------------------------------------------------------------------------------
-  function axi_s2m_b_sz(id_width : natural range 0 to axi_id_sz) return positive is
+  function axi_s2m_b_sz(id_width : axi_id_width_t) return positive is
   begin
     -- Excluded member: valid
     return id_width + axi_resp_sz;
   end function;
 
   function to_slv(
-    data : axi_s2m_b_t; id_width : natural range 0 to axi_id_sz
+    data : axi_s2m_b_t; id_width : axi_id_width_t
   ) return std_ulogic_vector is
     variable result : std_ulogic_vector(axi_s2m_b_sz(id_width) - 1 downto 0);
     variable lo, hi : natural := 0;
@@ -656,7 +663,7 @@ package body axi_pkg is
     lo := 0;
     if id_width > 0 then
       hi := id_width - 1;
-      result(hi downto lo) := std_logic_vector(data.id(hi downto lo));
+      result(hi downto lo) := std_ulogic_vector(data.id(hi downto lo));
 
       lo := hi + 1;
     end if;
@@ -669,7 +676,7 @@ package body axi_pkg is
   end function;
 
   function to_axi_s2m_b(
-    data : std_ulogic_vector; id_width : natural range 0 to axi_id_sz
+    data : std_ulogic_vector; id_width : axi_id_width_t
   ) return axi_s2m_b_t is
     constant offset : natural := data'low;
     variable result : axi_s2m_b_t := axi_s2m_b_init;
@@ -678,7 +685,7 @@ package body axi_pkg is
     lo := 0;
     if id_width > 0 then
       hi := id_width - 1;
-      result.id(hi downto lo) := unsigned(data(hi + offset downto lo + offset));
+      result.id(hi downto lo) := u_unsigned(data(hi + offset downto lo + offset));
 
       lo := hi + 1;
     end if;
@@ -693,7 +700,7 @@ package body axi_pkg is
 
   ------------------------------------------------------------------------------
   function axi_s2m_r_sz(
-    data_width : positive range 8 to axi_data_sz; id_width : natural range 0 to axi_id_sz
+    data_width : axi_data_width_t; id_width : axi_id_width_t
   ) return positive is
   begin
     assert sanity_check_axi_data_width(data_width)
@@ -707,8 +714,8 @@ package body axi_pkg is
 
   function to_slv(
     data : axi_s2m_r_t;
-    data_width : positive range 8 to axi_data_sz;
-    id_width : natural range 0 to axi_id_sz)
+    data_width : axi_data_width_t;
+    id_width : axi_id_width_t)
   return std_ulogic_vector is
     variable result : std_ulogic_vector(axi_s2m_r_sz(data_width, id_width) - 1 downto 0);
     variable lo, hi : natural := 0;
@@ -716,7 +723,7 @@ package body axi_pkg is
     lo := 0;
     if id_width > 0 then
       hi := id_width - 1;
-      result(hi downto lo) := std_logic_vector(data.id(hi downto lo));
+      result(hi downto lo) := std_ulogic_vector(data.id(hi downto lo));
 
       lo := hi + 1;
     end if;
@@ -738,8 +745,8 @@ package body axi_pkg is
 
   function to_axi_s2m_r(
     data : std_ulogic_vector;
-    data_width : positive range 8 to axi_data_sz;
-    id_width : natural range 0 to axi_id_sz
+    data_width : axi_data_width_t;
+    id_width : axi_id_width_t
   ) return axi_s2m_r_t is
     constant offset : natural := data'low;
     variable result : axi_s2m_r_t := axi_s2m_r_init;
@@ -748,7 +755,7 @@ package body axi_pkg is
     lo := 0;
     if id_width > 0 then
       hi := id_width - 1;
-      result.id(hi downto lo) := unsigned(data(hi + offset downto lo + offset));
+      result.id(hi downto lo) := u_unsigned(data(hi + offset downto lo + offset));
 
       lo := hi + 1;
     end if;

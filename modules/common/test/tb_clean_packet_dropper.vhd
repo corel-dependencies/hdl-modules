@@ -29,7 +29,6 @@ use common.types_pkg.all;
 
 entity tb_clean_packet_dropper is
   generic (
-    seed : natural;
     data_width : positive;
     runner_cfg : string
   );
@@ -133,7 +132,7 @@ begin
 
   begin
     test_runner_setup(runner, runner_cfg);
-    rnd.InitSeed(seed);
+    rnd.InitSeed(get_string_seed(runner_cfg));
 
     if run("test_random_data") then
       for packet_idx in 0 to 500 loop
@@ -228,7 +227,7 @@ begin
 
     ------------------------------------------------------------------------------
     set_drop : process(all)
-      variable drop_int : std_logic := '0';
+      variable drop_int : std_ulogic := '0';
     begin
       case drop_behavior is
         when no_drop =>
@@ -284,8 +283,7 @@ begin
         data_width => input_data'length,
         data_queue => input_data_queue,
         stall_config => stall_config,
-        logger_name_suffix => " - input",
-        seed => seed
+        logger_name_suffix => " - input"
       )
       port map (
         clk => clk,
@@ -318,8 +316,7 @@ begin
         data_width => result_data'length,
         reference_data_queue => reference_data_queue,
         stall_config => stall_config,
-        logger_name_suffix => " - result",
-        seed => seed
+        logger_name_suffix => " - result"
       )
       port map (
         clk => clk,

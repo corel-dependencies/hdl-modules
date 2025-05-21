@@ -23,9 +23,9 @@ use work.axi_pkg.all;
 
 entity tb_axi_pkg is
   generic (
-    data_width : positive range 8 to axi_data_sz := 8;
-    id_width : natural range 0 to axi_id_sz := 0;
-    addr_width : positive range 1 to axi_a_addr_sz := 1;
+    data_width : axi_data_width_t := 8;
+    id_width : axi_id_width_t := 0;
+    addr_width : axi_address_width_t := 1;
     runner_cfg : string
   );
 end entity;
@@ -122,7 +122,7 @@ begin
 
   begin
     test_runner_setup(runner, runner_cfg);
-    rnd.InitSeed(rnd'instance_name);
+    rnd.InitSeed(get_string_seed(runner_cfg));
 
     if run("test_slv_conversion") then
       for iteration in 0 to 1000 loop

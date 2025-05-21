@@ -60,6 +60,10 @@ The following things can be found, at a glance, in the different modules:
 * `common <https://hdl-modules.com/modules/common/common.html>`_:
   Miscellaneous, but useful, things that do not fit anywhere else.
 
+* `dma_axi_write_simple <https://hdl-modules.com/modules/dma_axi_write_simple/dma_axi_write_simple.html>`_:
+  The world's most efficient IP for streaming data from FPGA to DDR over AXI.
+  Complete with a full C++ driver.
+
 * `fifo <https://hdl-modules.com/modules/fifo/fifo.html>`_:
   Synchronous and asynchronous FIFOs with AXI-stream-like handshake interface.
 
@@ -72,7 +76,7 @@ The following things can be found, at a glance, in the different modules:
 * `math <https://hdl-modules.com/modules/math/math.html>`_:
   Some common math function implementations.
 
-* `reg\_file <https://hdl-modules.com/modules/reg_file/reg_file.html>`_:
+* `register\_file <https://hdl-modules.com/modules/register_file/register_file.html>`_:
   A generic register file and a simulation support package for register operations.
 
 * `resync <https://hdl-modules.com/modules/resync/resync.html>`_:

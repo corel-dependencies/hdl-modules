@@ -20,6 +20,7 @@ use ieee.numeric_std.all;
 library math;
 use math.math_pkg.all;
 
+use work.common_pkg.in_simulation;
 use work.types_pkg.all;
 
 
@@ -116,7 +117,7 @@ package body addr_pkg is
             & ", bit index "
             & integer'image(bit_idx)
             & ": "
-            & std_logic'image(addrs(addr_idx)(bit_idx))
+            & std_ulogic'image(addrs(addr_idx)(bit_idx))
             severity warning;
 
           return false;
@@ -412,8 +413,11 @@ package body addr_pkg is
     end loop;
 
     -- Can use calls like the ones below to debug/inspect the process.
-    print_addr_and_mask_vec(result);
-    report "Cost = " & integer'image(get_mask_cost(result)) severity note;
+    if in_simulation then
+      -- Does not work in synthesis (to_string() VHDL-2008).
+      print_addr_and_mask_vec(result);
+      report "Cost = " & integer'image(get_mask_cost(result)) severity note;
+    end if;
 
     return result;
   end function;

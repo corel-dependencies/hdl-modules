@@ -15,9 +15,6 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-library axi;
-use axi.axi_pkg.all;
-
 
 package axi_lite_pkg is
 
@@ -25,18 +22,21 @@ package axi_lite_pkg is
   -- A (Address Read and Address Write) channels
   ------------------------------------------------------------------------------
 
+  -- Address field (ARADDR or AWADDR).
+  -- The width value below is a max value, implementation should only take into regard the bits
+  -- that are actually used.
+  subtype axi_lite_address_width_t is positive range 1 to 64;
+
   -- Record for the AR/AW signals in the master-to-slave direction.
-  -- Note that the width of the 'addr' field is a max value, implementation should only take into
-  -- regard the bits that are actually used.
   type axi_lite_m2s_a_t is record
     valid : std_ulogic;
-    addr : u_unsigned(axi_a_addr_sz - 1 downto 0);
+    addr : u_unsigned(axi_lite_address_width_t'high - 1 downto 0);
     -- Excluded members: prot
     -- These are typically not changed on a transfer-to-transfer basis.
   end record;
 
   constant axi_lite_m2s_a_init : axi_lite_m2s_a_t := (valid => '0', addr => (others => '0'));
-  function axi_lite_m2s_a_sz(addr_width : positive range 1 to axi_a_addr_sz) return positive;
+  function axi_lite_m2s_a_sz(addr_width : axi_lite_address_width_t) return positive;
 
   -- Record for the AR/AW signals in the slave-to-master direction.
   type axi_lite_s2m_a_t is record
@@ -54,6 +54,8 @@ package axi_lite_pkg is
   -- The width value below is a max value, implementation should only take into regard the bits
   -- that are actually used.
   constant axi_lite_data_sz : positive := 32;
+  -- constant axi_lite_data_sz : positive := 64;
+  subtype axi_lite_data_width_t is positive range 8 to axi_lite_data_sz;
 
   -- Check that a provided data width is valid to be used with AXI-Lite.
   -- Return 'true' if everything is okay, otherwise 'false'.
@@ -65,7 +67,7 @@ package axi_lite_pkg is
   constant axi_lite_w_strb_sz : positive := axi_lite_data_sz / 8;
 
   function to_axi_lite_strb(
-    data_width : positive range 8 to axi_lite_data_sz
+    data_width : axi_lite_data_width_t
   ) return std_ulogic_vector;
 
   -- Record for the W signals in the master-to-slave direction.
@@ -78,13 +80,13 @@ package axi_lite_pkg is
   constant axi_lite_m2s_w_init : axi_lite_m2s_w_t := (
     valid => '0', data => (others => '-'), strb => (others => '0')
   );
-  function axi_lite_m2s_w_sz(data_width : positive range 8 to axi_lite_data_sz) return positive;
+  function axi_lite_m2s_w_sz(data_width : axi_lite_data_width_t) return positive;
 
   function to_slv(
-    data : axi_lite_m2s_w_t; data_width : positive range 8 to axi_lite_data_sz
+    data : axi_lite_m2s_w_t; data_width : axi_lite_data_width_t
   ) return std_ulogic_vector;
   function to_axi_lite_m2s_w(
-    data : std_ulogic_vector; data_width : positive range 8 to axi_lite_data_sz
+    data : std_ulogic_vector; data_width : axi_lite_data_width_t
   ) return axi_lite_m2s_w_t;
 
   -- Record for the W signals in the slave-to-master direction.
@@ -106,10 +108,19 @@ package axi_lite_pkg is
 
   constant axi_lite_m2s_b_init : axi_lite_m2s_b_t := (ready => '0');
 
+  -- Response field (RRESP or BRESP).
+  constant axi_resp_sz : positive := 2;
+  subtype axi_lite_resp_t is std_ulogic_vector(axi_resp_sz - 1 downto 0);
+
+  constant axi_lite_resp_okay : axi_lite_resp_t := "00";
+  constant axi_lite_resp_exokay : axi_lite_resp_t := "01";
+  constant axi_lite_resp_slverr : axi_lite_resp_t := "10";
+  constant axi_lite_resp_decerr : axi_lite_resp_t := "11";
+
   -- Record for the B signals in the slave-to-master direction.
   type axi_lite_s2m_b_t is record
     valid : std_ulogic;
-    resp : axi_resp_t;
+    resp : axi_lite_resp_t;
   end record;
 
   constant axi_lite_s2m_b_init : axi_lite_s2m_b_t := (valid => '0', resp => (others => '-'));
@@ -132,19 +143,19 @@ package axi_lite_pkg is
   type axi_lite_s2m_r_t is record
     valid : std_ulogic;
     data : std_ulogic_vector(axi_lite_data_sz - 1 downto 0);
-    resp : axi_resp_t;
+    resp : axi_lite_resp_t;
   end record;
 
   constant axi_lite_s2m_r_init : axi_lite_s2m_r_t := (
     valid => '0', data => (others => '-'), resp => (others => '-')
   );
-  function axi_lite_s2m_r_sz(data_width : positive range 8 to axi_lite_data_sz) return positive;
+  function axi_lite_s2m_r_sz(data_width : axi_lite_data_width_t) return positive;
 
   function to_slv(
-    data : axi_lite_s2m_r_t; data_width : positive range 8 to axi_lite_data_sz
+    data : axi_lite_s2m_r_t; data_width : axi_lite_data_width_t
   ) return std_ulogic_vector;
   function to_axi_lite_s2m_r(
-    data : std_ulogic_vector; data_width : positive range 8 to axi_lite_data_sz
+    data : std_ulogic_vector; data_width : axi_lite_data_width_t
   ) return axi_lite_s2m_r_t;
 
 
@@ -227,7 +238,7 @@ end;
 package body axi_lite_pkg is
 
   ------------------------------------------------------------------------------
-  function axi_lite_m2s_a_sz(addr_width : positive range 1 to axi_a_addr_sz) return positive is
+  function axi_lite_m2s_a_sz(addr_width : axi_lite_address_width_t) return positive is
   begin
     -- Excluded member: valid.
     return addr_width;
@@ -247,7 +258,7 @@ package body axi_lite_pkg is
   end function;
 
   function to_axi_lite_strb(
-    data_width : positive range 8 to axi_lite_data_sz
+    data_width : axi_lite_data_width_t
   ) return std_ulogic_vector is
     variable result : std_ulogic_vector(axi_lite_w_strb_sz - 1 downto 0) := (others => '0');
   begin
@@ -260,7 +271,16 @@ package body axi_lite_pkg is
     return result;
   end function;
 
-  function axi_lite_m2s_w_sz(data_width : positive range 8 to axi_lite_data_sz) return positive is
+  function axi_w_strb_width(data_width : axi_lite_data_width_t) return positive is
+  begin
+    assert sanity_check_axi_lite_data_width(data_width)
+      report "Invalid data width, see printout above."
+      severity failure;
+
+    return data_width / 8;
+  end function;
+
+  function axi_lite_m2s_w_sz(data_width : axi_lite_data_width_t) return positive is
   begin
     assert sanity_check_axi_lite_data_width(data_width)
       report "Invalid data width, see printout above."
@@ -271,7 +291,7 @@ package body axi_lite_pkg is
   end function;
 
   function to_slv(
-    data : axi_lite_m2s_w_t; data_width : positive range 8 to axi_lite_data_sz
+    data : axi_lite_m2s_w_t; data_width : axi_lite_data_width_t
   ) return std_ulogic_vector is
     variable result : std_ulogic_vector(axi_lite_m2s_w_sz(data_width) - 1 downto 0);
     variable lo, hi : natural := 0;
@@ -290,7 +310,7 @@ package body axi_lite_pkg is
   end function;
 
   function to_axi_lite_m2s_w(
-    data : std_ulogic_vector; data_width : positive range 8 to axi_lite_data_sz
+    data : std_ulogic_vector; data_width : axi_lite_data_width_t
   ) return axi_lite_m2s_w_t is
     variable result : axi_lite_m2s_w_t := axi_lite_m2s_w_init;
     variable lo, hi : natural := 0;
@@ -310,7 +330,7 @@ package body axi_lite_pkg is
   ------------------------------------------------------------------------------
 
   ------------------------------------------------------------------------------
-  function axi_lite_s2m_r_sz(data_width : positive range 8 to axi_lite_data_sz)  return positive is
+  function axi_lite_s2m_r_sz(data_width : axi_lite_data_width_t)  return positive is
   begin
     assert sanity_check_axi_lite_data_width(data_width)
       report "Invalid data width, see printout above."
@@ -321,7 +341,7 @@ package body axi_lite_pkg is
   end function;
 
   function to_slv(
-    data : axi_lite_s2m_r_t; data_width : positive range 8 to axi_lite_data_sz
+    data : axi_lite_s2m_r_t; data_width : axi_lite_data_width_t
   ) return std_ulogic_vector is
     variable result : std_ulogic_vector(axi_lite_s2m_r_sz(data_width) - 1 downto 0);
     variable lo, hi : natural := 0;
@@ -340,7 +360,7 @@ package body axi_lite_pkg is
   end function;
 
   function to_axi_lite_s2m_r(
-    data : std_ulogic_vector; data_width : positive range 8 to axi_lite_data_sz
+    data : std_ulogic_vector; data_width : axi_lite_data_width_t
   ) return axi_lite_s2m_r_t is
     variable result : axi_lite_s2m_r_t := axi_lite_s2m_r_init;
     variable lo, hi : natural := 0;

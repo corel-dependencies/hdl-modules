@@ -19,8 +19,7 @@ def get_short_slogan() -> str:
     Note that this slogan should be the same as the one used in the readme and on the website below.
     The difference is capitalization and whether the project name is included.
     """
-    result = "A collection of reusable, high-quality, peer-reviewed VHDL building blocks"
-    return result
+    return "A collection of reusable, high-quality, peer-reviewed VHDL building blocks"
 
 
 def get_readme_rst(
@@ -125,6 +124,10 @@ The following things can be found, at a glance, in the different modules:
 * `common <{WEBSITE_URL}/modules/common/common.html>`_:
   Miscellaneous, but useful, things that do not fit anywhere else.
 
+* `dma_axi_write_simple <{WEBSITE_URL}/modules/dma_axi_write_simple/dma_axi_write_simple.html>`_:
+  The world's most efficient IP for streaming data from FPGA to DDR over AXI.
+  Complete with a full C++ driver.
+
 * `fifo <{WEBSITE_URL}/modules/fifo/fifo.html>`_:
   Synchronous and asynchronous FIFOs with AXI-stream-like handshake interface.
 
@@ -137,7 +140,7 @@ The following things can be found, at a glance, in the different modules:
 * `math <{WEBSITE_URL}/modules/math/math.html>`_:
   Some common math function implementations.
 
-* `reg\\_file <{WEBSITE_URL}/modules/reg_file/reg_file.html>`_:
+* `register\\_file <{WEBSITE_URL}/modules/register_file/register_file.html>`_:
   A generic register file and a simulation support package for register operations.
 
 * `resync <{WEBSITE_URL}/modules/resync/resync.html>`_:

@@ -19,9 +19,6 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-library axi;
-use axi.axi_pkg.all;
-
 library common;
 
 use work.axi_lite_pkg.all;
@@ -29,8 +26,8 @@ use work.axi_lite_pkg.all;
 
 entity axi_lite_pipeline is
   generic (
-    data_width : positive range 1 to axi_lite_data_sz;
-    addr_width : positive range 1 to axi_a_addr_sz;
+    data_width : axi_lite_data_width_t;
+    addr_width : axi_lite_address_width_t;
     -- Settings to the handshake_pipeline blocks. These default settings (the same as
     -- handshake_pipeline's defaults) give full throughput and the lowest logic depth.
     -- They can be changed from default in order to decrease logic utilization.
@@ -58,9 +55,9 @@ begin
     signal input_data, output_data : std_ulogic_vector(a_width - 1 downto 0) := (others => '0');
   begin
 
-    input_data <= std_logic_vector(master_m2s.write.aw.addr(input_data'range));
+    input_data <= std_ulogic_vector(master_m2s.write.aw.addr(input_data'range));
 
-    slave_m2s.write.aw.addr(output_data'range) <= unsigned(output_data);
+    slave_m2s.write.aw.addr(output_data'range) <= u_unsigned(output_data);
 
 
     ------------------------------------------------------------------------------
@@ -147,9 +144,9 @@ begin
     signal input_data, output_data : std_ulogic_vector(a_width - 1 downto 0) := (others => '0');
   begin
 
-    input_data <= std_logic_vector(master_m2s.read.ar.addr(input_data'range));
+    input_data <= std_ulogic_vector(master_m2s.read.ar.addr(input_data'range));
 
-    slave_m2s.read.ar.addr(output_data'range) <= unsigned(output_data);
+    slave_m2s.read.ar.addr(output_data'range) <= u_unsigned(output_data);
 
 
     ------------------------------------------------------------------------------

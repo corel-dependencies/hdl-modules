@@ -15,9 +15,15 @@
 -- based on VUnit VC calls, such as ``read_bus``.
 --
 -- If this BFM is used for a register bus, the convenience methods in
--- :ref:`reg_file.reg_operations_pkg` can be useful.
+-- :ref:`register_file.register_operations_pkg` can be useful.
 -- Note that the default value for ``bus_handle`` is the same as the default bus handle for the
--- procedures in :ref:`reg_file.reg_operations_pkg`.
+-- procedures in :ref:`register_file.register_operations_pkg`.
+--
+-- .. note::
+--
+--   This entity is dependent on VHDL components from VUnit version 5.0.0 or greater,
+--   which is currently in a pre-release state.
+--   See :ref:`dependency_vunit` for more information.
 -- -------------------------------------------------------------------------------------------------
 
 library ieee;
@@ -29,8 +35,8 @@ use axi_lite.axi_lite_pkg.all;
 
 library common;
 
-library reg_file;
-use reg_file.reg_operations_pkg.regs_bus_master;
+library register_file;
+use register_file.register_operations_pkg.register_bus_master;
 
 library vunit_lib;
 use vunit_lib.bus_master_pkg.bus_master_t;
@@ -40,7 +46,7 @@ use vunit_lib.bus_master_pkg.data_length;
 
 entity axi_lite_master is
   generic (
-    bus_handle : bus_master_t := regs_bus_master;
+    bus_handle : bus_master_t := register_bus_master;
     -- Suffix for error log messages. Can be used to differentiate between multiple instances.
     logger_name_suffix : string := ""
   );
@@ -48,7 +54,7 @@ entity axi_lite_master is
     clk : in std_ulogic;
     --# {{}}
     axi_lite_m2s : out axi_lite_m2s_t := axi_lite_m2s_init;
-    axi_lite_s2m : in axi_lite_s2m_t := axi_lite_s2m_init
+    axi_lite_s2m : in axi_lite_s2m_t
   );
 end entity;
 
@@ -71,11 +77,11 @@ begin
 
 
   ------------------------------------------------------------------------------
-  axi_lite_m2s.read.ar.addr(araddr'range) <= unsigned(araddr);
+  axi_lite_m2s.read.ar.addr(araddr'range) <= u_unsigned(araddr);
 
   rdata <= axi_lite_s2m.read.r.data(rdata'range);
 
-  axi_lite_m2s.write.aw.addr(awaddr'range) <= unsigned(awaddr);
+  axi_lite_m2s.write.aw.addr(awaddr'range) <= u_unsigned(awaddr);
 
   axi_lite_m2s.write.w.data(wdata'range) <= wdata;
   axi_lite_m2s.write.w.strb(wstrb'range) <= wstrb;
@@ -84,7 +90,10 @@ begin
   ------------------------------------------------------------------------------
   axi_lite_master_inst : entity vunit_lib.axi_lite_master
     generic map (
-      bus_handle => bus_handle
+      bus_handle => bus_handle,
+      -- To avoid a lot of "NUMERIC_STD."=": meta value detected" warnings that slow down
+      -- simulation immensely.
+      drive_invalid_val => '0'
     )
     port map (
       aclk => clk,

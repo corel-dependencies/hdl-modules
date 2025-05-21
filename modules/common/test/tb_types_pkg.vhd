@@ -52,7 +52,7 @@ begin
     variable positive_vec : positive_vec_t(0 to 3) := (others => 1);
 
     variable my_boolean, my_boolean2 : boolean := false;
-    variable my_std_logic, my_std_logic2 : std_logic := '0';
+    variable my_std_logic, my_std_logic2 : std_ulogic := '0';
 
   begin
     test_runner_setup(runner, runner_cfg);
@@ -78,6 +78,14 @@ begin
       positive_vec := (4, 3, 2, 1);
       check_equal(get_maximum(positive_vec), 4);
 
+    elsif run("test_is_integer") then
+      check_true(is_integer(3.0));
+      check_true(is_integer(0.0));
+      check_true(is_integer(-3.0));
+      check_false(is_integer(3.1));
+      check_false(is_integer(0.000001));
+      check_false(is_integer(-3.1));
+
     elsif run("test_to_bool_std_logic") then
       check_equal(to_bool('0'), false);
       check_equal(to_bool('1'), true);
@@ -85,6 +93,14 @@ begin
     elsif run("test_to_bool_integer") then
       check_equal(to_bool(0), false);
       check_equal(to_bool(1), true);
+
+    elsif run("test_to_sl_bool") then
+      check_equal(to_sl(true), '1');
+      check_equal(to_sl(false), '0');
+
+    elsif run("test_to_sl_integer") then
+      check_equal(to_sl(1), '1');
+      check_equal(to_sl(0), '0');
 
     elsif run("test_to_int_std_logic") then
       check_equal(to_int('0'), 0);
@@ -154,13 +170,13 @@ begin
       bit_data0(3) := 'L';
       check_false(is_01(bit_data0));
 
-      check_true(is_01(unsigned(bit_data1)));
+      check_true(is_01(u_unsigned(bit_data1)));
       bit_data1(3) := 'H';
-      check_false(is_01(unsigned(bit_data1)));
+      check_false(is_01(u_unsigned(bit_data1)));
 
-      check_true(is_01(signed(bit_data2)));
+      check_true(is_01(u_signed(bit_data2)));
       bit_data2(8) := 'X';
-      check_false(is_01(signed(bit_data2)));
+      check_false(is_01(u_signed(bit_data2)));
 
     elsif run("test_boolean_and_std_logic_to_boolean_operator") then
       my_boolean := true;

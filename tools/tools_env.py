@@ -7,7 +7,6 @@
 # https://github.com/hdl-modules/hdl-modules
 # --------------------------------------------------------------------------------------------------
 
-# Standard libraries
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent.resolve()

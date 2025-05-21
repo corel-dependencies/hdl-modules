@@ -33,12 +33,21 @@ package types_pkg is
   function get_maximum(values : positive_vec_t) return positive;
 
   type time_vec_t is array (integer range <>) of time;
+
+  --------------------------------------------------------------------------------------------------
   type real_vec_t is array (integer range <>) of real;
+
+  -- Return true if the value held in the floating-point variable is an integer.
+  function is_integer(value : real) return boolean;
+  --------------------------------------------------------------------------------------------------
+
   type boolean_vec_t is array (integer range <>) of boolean;
 
   function to_sl(value : boolean) return std_ulogic;
+  function to_sl(value : natural range 0 to 1) return std_ulogic;
+
   function to_bool(value : std_ulogic) return boolean;
-  function to_bool(value : natural) return boolean;
+  function to_bool(value : natural range 0 to 1) return boolean;
 
   subtype binary_integer_t is integer range 0 to 1;
   function to_int(value : boolean) return binary_integer_t;
@@ -130,9 +139,24 @@ package body types_pkg is
     return result;
   end function;
 
+  --------------------------------------------------------------------------------------------------
+  function is_integer(value : real) return boolean is
+  begin
+    return real(integer(value)) = value;
+  end function;
+  --------------------------------------------------------------------------------------------------
+
   function to_sl(value : boolean) return std_ulogic is
   begin
     if value then
+      return '1';
+    end if;
+    return '0';
+  end function;
+
+  function to_sl(value : natural range 0 to 1) return std_ulogic is
+  begin
+    if value = 1 then
       return '1';
     end if;
     return '0';
@@ -145,21 +169,13 @@ package body types_pkg is
     elsif value = '0' then
       return false;
     end if;
-    assert false report "Can not convert value: " & std_logic'image(value);
+    assert false report "Can not convert value: " & std_ulogic'image(value);
     return false;
   end function;
 
-  function to_bool(value : natural) return boolean is
+  function to_bool(value : natural range 0 to 1) return boolean is
   begin
-    if value = 1 then
-      return true;
-    end if;
-    if value = 0 then
-      return false;
-    end if;
-
-    assert false report "Can not convert value: " & natural'image(value);
-    return false;
+    return value = 1;
   end function;
 
   function to_int(value : boolean) return binary_integer_t is
@@ -230,7 +246,7 @@ package body types_pkg is
   end function;
 
   function count_ones(data : u_unsigned) return natural is
-    constant result : natural range 0 to data'length := count_ones(data=>std_logic_vector(data));
+    constant result : natural range 0 to data'length := count_ones(data=>std_ulogic_vector(data));
   begin
     return result;
   end function;
@@ -254,12 +270,12 @@ package body types_pkg is
 
   function is_01(value : u_unsigned) return boolean is
   begin
-    return is_01(std_logic_vector(value));
+    return is_01(std_ulogic_vector(value));
   end function;
 
   function is_01(value : u_signed) return boolean is
   begin
-    return is_01(std_logic_vector(value));
+    return is_01(std_ulogic_vector(value));
   end function;
   --------------------------------------------------------------------------------------------------
 

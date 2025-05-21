@@ -19,6 +19,7 @@ use vunit_lib.integer_array_pkg.all;
 use vunit_lib.queue_pkg.all;
 use vunit_lib.random_pkg.all;
 use vunit_lib.run_pkg.all;
+use vunit_lib.run_types_pkg.all;
 
 library bfm;
 use bfm.stall_bfm_pkg.stall_configuration_t;
@@ -29,7 +30,6 @@ library common;
 entity tb_axi_stream_bfm is
   generic (
     data_width : positive;
-    seed : natural;
     runner_cfg : string
   );
 end entity;
@@ -55,14 +55,14 @@ architecture tb of tb_axi_stream_bfm is
     return rnd.Uniform(0, 90);
   end function;
 
-  impure function get_master_stall_probability_percent return natural is
+  impure function init_and_get_stall_probability_percent return natural is
   begin
     -- This is the first function that is called, so we initialize the random number generator here.
-    rnd.InitSeed(seed);
+    rnd.InitSeed(get_string_seed(runner_cfg));
 
     return get_stall_probability_percent;
   end function;
-  constant master_stall_probability_percent : natural := get_master_stall_probability_percent;
+  constant master_stall_probability_percent : natural := init_and_get_stall_probability_percent;
   constant slave_stall_probability_percent : natural := get_stall_probability_percent;
 
   constant master_stall_config : stall_configuration_t := (
@@ -109,6 +109,25 @@ begin
       num_packets_expected := num_packets_expected + 1;
     end procedure;
 
+    procedure test_signed_vs_unsigned is
+      variable data_packet_unsigned : integer_array_t := new_1d(
+        length=>1, bit_width=>8, is_signed=>false
+      );
+      variable data_packet_signed : integer_array_t := new_1d(
+        length=>1, bit_width=>8, is_signed=>true
+      );
+    begin
+      set(arr=>data_packet_unsigned, idx=>0, value=>255);
+      set(arr=>data_packet_signed, idx=>0, value=>-1);
+
+      -- Stream master does not support signed data yet.
+      push_ref(input_data_queue, data_packet_unsigned);
+      -- Slave does though.
+      push_ref(reference_data_queue, data_packet_signed);
+
+      num_packets_expected := num_packets_expected + 1;
+    end procedure;
+
   begin
     test_runner_setup(runner, runner_cfg);
 
@@ -120,6 +139,10 @@ begin
       for idx in 0 to 100 loop
         test_random_packet;
       end loop;
+
+    elsif run("test_signed_vs_unsigned") then
+      test_signed_vs_unsigned;
+
     end if;
 
     wait until num_packets_checked = num_packets_expected and rising_edge(clk);
@@ -134,7 +157,6 @@ begin
       data_width => data'length,
       data_queue => input_data_queue,
       stall_config => master_stall_config,
-      seed => seed,
       logger_name_suffix => " - input"
     )
     port map (
@@ -154,7 +176,6 @@ begin
       data_width => data'length,
       reference_data_queue => reference_data_queue,
       stall_config => slave_stall_config,
-      seed => seed,
       logger_name_suffix => " - result"
     )
     port map (

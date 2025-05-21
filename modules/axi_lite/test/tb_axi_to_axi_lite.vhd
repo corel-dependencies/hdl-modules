@@ -33,7 +33,7 @@ use work.axi_lite_pkg.all;
 
 entity tb_axi_to_axi_lite is
   generic (
-    data_width : positive range 1 to axi_lite_data_sz;
+    data_width : axi_lite_data_width_t;
     runner_cfg : string
   );
 end entity;
@@ -81,7 +81,8 @@ begin
     variable buf : buffer_t;
   begin
     test_runner_setup(runner, runner_cfg);
-    rnd.InitSeed(rnd'instance_name);
+    rnd.InitSeed(get_string_seed(runner_cfg));
+
     buf := allocate(memory, num_words * bytes_per_word);
 
     if run("read_write_data") then

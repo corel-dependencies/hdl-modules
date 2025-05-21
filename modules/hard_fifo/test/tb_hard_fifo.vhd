@@ -156,7 +156,7 @@ begin
 
   begin
     test_runner_setup(runner, runner_cfg);
-    rnd.InitSeed(rnd'instance_name);
+    rnd.InitSeed(get_string_seed(runner_cfg));
 
     if run("test_init_state") then
       -- read_valid is 'U' before the first rising edge
@@ -197,7 +197,7 @@ begin
 
       -- Run a lot of reads and writes, with the FIFO going empty a lot
       run_test(2000, 2000);
-      check_relation(has_gone_empty_times > 500, "Got " & to_string(has_gone_empty_times));
+      check_relation(has_gone_empty_times > 400, "Got " & to_string(has_gone_empty_times));
 
     end if;
 

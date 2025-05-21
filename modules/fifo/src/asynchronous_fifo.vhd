@@ -13,6 +13,8 @@
 -- The implementation is quite optimized with very low resource utilization when extra features
 -- are not enabled.
 --
+-- .. figure:: asynchronous_fifo_circuit.png
+--
 -- For more CDC solutions, please see :ref:`module_resync`.
 --
 -- .. note::
@@ -28,6 +30,12 @@
 --   the exact level on the write side. When there is no word in the output register,
 --   e.g when the FIFO is empty, the ``write_level`` reported will be one higher than the
 --   real level.
+--
+-- See the
+-- `constraint file <https://github.com/hdl-modules/hdl-modules/blob/main/modules/fifo/scoped_constraints/asynchronous_fifo.tcl>`__
+-- and
+-- `this article <https://www.linkedin.com/pulse/reliable-cdc-constraints-5-asynchronous-fifo-lukas-vik-snlgf>`__
+-- for information about timing constraints and how this CDC topology is made reliable.
 -- -------------------------------------------------------------------------------------------------
 
 library ieee;
@@ -134,7 +142,7 @@ architecture a of asynchronous_fifo is
   signal read_data_ram : std_ulogic_vector(width - 1 downto 0) := (others => '0');
   signal word_in_output_register : natural range 0 to 1 := 0;
 
-  signal unsure_if_we_have_full_packet, unsure_if_we_have_full_packet_p1 : std_logic := '0';
+  signal unsure_if_we_have_full_packet, unsure_if_we_have_full_packet_p1 : std_ulogic := '0';
 
 begin
 
@@ -285,8 +293,7 @@ begin
       -- Furthermore, in packet_mode the write_addr_resync value is not used for calculation of
       -- read_valid, which makes the resynchronization of write_addr pointless unless the user would
       -- like to observe read_level.
-      -- But when read_level is not observed there is a bug/limitation in Vivado where the logic
-      -- is not stripped, see https://gitlab.com/hdl_modules/hdl_modules/-/issues/15.
+      -- But even when read_level is not observed Vivado is not able to strip it.
       -- This corresponds to quite a lot of LUT/FF in a large project.
       -- Since few use cases can be imagined for read_level when FIFO is already in packet mode,
       -- we make the decision of not supporting read_level in this mode.

@@ -32,8 +32,7 @@ use work.axi_bfm_pkg.all;
 
 entity tb_axi_read_bfm is
   generic (
-    data_width : positive range 8 to axi_data_sz;
-    seed : natural;
+    data_width : axi_data_width_t;
     runner_cfg : string
   );
 end entity;
@@ -135,7 +134,7 @@ begin
 
   begin
     test_runner_setup(runner, runner_cfg);
-    rnd.InitSeed(seed);
+    rnd.InitSeed(get_string_seed(runner_cfg));
 
     if run("test_random_transactions") then
       for i in 0 to 50 loop
@@ -155,8 +154,7 @@ begin
       id_width => id_width,
       data_width => data_width,
       job_queue => job_queue,
-      reference_data_queue => data_queue,
-      seed => seed
+      reference_data_queue => data_queue
     )
     port map (
       clk => clk,

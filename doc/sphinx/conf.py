@@ -11,7 +11,6 @@
 Configuration file for the Sphinx documentation builder.
 """
 
-# Standard libraries
 import sys
 from pathlib import Path
 
@@ -19,10 +18,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(REPO_ROOT))
 
-# Import before others since it modifies PYTHONPATH. pylint: disable=unused-import
+# Import before others since it modifies PYTHONPATH.
 import tools.tools_pythonpath  # noqa: F401
 
-# First party libraries
 from hdl_modules.about import WEBSITE_URL
 
 project = "hdl-modules"
@@ -34,6 +32,7 @@ extensions = [
     "sphinx_sitemap",
     "sphinx.ext.graphviz",
     "sphinx.ext.intersphinx",
+    "sphinxcontrib.googleanalytics",
     "sphinxext.opengraph",
     "symbolator_sphinx",
 ]
@@ -61,7 +60,6 @@ html_theme = "sphinx_rtd_theme"
 
 html_theme_options = {
     "prev_next_buttons_location": "both",
-    "analytics_id": "G-GN3TVQGSHC",
     "logo_only": True,
 }
 
@@ -78,6 +76,9 @@ html_css_files = [
     # https://stackoverflow.com/questions/69845499/
     "docutils_table_caption_below.css",
 ]
+
+# Google Analytics settings.
+googleanalytics_id = "G-GN3TVQGSHC"
 
 # OpenGraph settings.
 ogp_site_url = WEBSITE_URL

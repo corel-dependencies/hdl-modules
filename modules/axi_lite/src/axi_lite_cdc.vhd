@@ -19,9 +19,6 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-library axi;
-use axi.axi_pkg.all;
-
 library common;
 use common.attribute_pkg.all;
 
@@ -32,9 +29,9 @@ use work.axi_lite_pkg.all;
 
 entity axi_lite_cdc is
   generic (
-    data_width : positive range 1 to axi_lite_data_sz;
-    addr_width : positive range 1 to axi_a_addr_sz;
-    fifo_depth : positive := 16;
+    data_width : axi_lite_data_width_t;
+    addr_width : axi_lite_address_width_t;
+    fifo_depth : positive := 8;
     ram_type : ram_style_t := ram_style_auto
   );
   port (
@@ -58,9 +55,9 @@ begin
     signal write_data, read_data : std_ulogic_vector(a_width - 1 downto 0) := (others => '0');
   begin
 
-    write_data <= std_logic_vector(master_m2s.write.aw.addr(write_data'range));
+    write_data <= std_ulogic_vector(master_m2s.write.aw.addr(write_data'range));
 
-    slave_m2s.write.aw.addr(read_data'range) <= unsigned(read_data);
+    slave_m2s.write.aw.addr(read_data'range) <= u_unsigned(read_data);
 
 
     ------------------------------------------------------------------------------
@@ -147,9 +144,9 @@ begin
     signal write_data, read_data : std_ulogic_vector(a_width - 1 downto 0) := (others => '0');
   begin
 
-    write_data <= std_logic_vector(master_m2s.read.ar.addr(write_data'range));
+    write_data <= std_ulogic_vector(master_m2s.read.ar.addr(write_data'range));
 
-    slave_m2s.read.ar.addr(read_data'range) <= unsigned(read_data);
+    slave_m2s.read.ar.addr(read_data'range) <= u_unsigned(read_data);
 
 
     ------------------------------------------------------------------------------

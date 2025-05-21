@@ -7,11 +7,11 @@
 # https://github.com/hdl-modules/hdl-modules
 # --------------------------------------------------------------------------------------------------
 
-# Standard libraries
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from __future__ import annotations
 
-# Third party libraries
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable
+
 from tsfpga.examples.vivado.project import TsfpgaExampleVivadoNetlistProject
 from tsfpga.module import BaseModule
 from tsfpga.vivado.build_result_checker import (
@@ -25,12 +25,9 @@ from tsfpga.vivado.build_result_checker import (
 )
 
 if TYPE_CHECKING:
-    # Third party libraries
     from matplotlib.axes import Axes
     from numpy import ndarray
-
-
-# pylint: disable=too-many-lines
+    from vunit.ui import VUnit
 
 
 class Module(BaseModule):
@@ -40,7 +37,7 @@ class Module(BaseModule):
         self._setup_lookup_tests(vunit_proj=vunit_proj, inspect=inspect)
         self._setup_generator_tests(vunit_proj=vunit_proj, inspect=inspect)
 
-    def _setup_lookup_tests(self, vunit_proj: Any, inspect: bool) -> None:
+    def _setup_lookup_tests(self, vunit_proj: VUnit, inspect: bool) -> None:
         def get_post_check(generics: dict[str, Any]) -> Callable:
             def post_check(output_path: str) -> bool:
                 return self.lookup_post_check(
@@ -52,18 +49,17 @@ class Module(BaseModule):
         tb = vunit_proj.library(self.library_name).test_bench("tb_sine_lookup")
         for memory_address_width in [7, 12]:
             for memory_data_width in [8, 18]:
-                generics = dict(
-                    memory_address_width=memory_address_width, memory_data_width=memory_data_width
-                )
+                generics = {
+                    "memory_address_width": memory_address_width,
+                    "memory_data_width": memory_data_width,
+                }
                 self.add_vunit_config(
                     test=tb, generics=generics, post_check=get_post_check(generics=generics)
                 )
 
-    def _setup_generator_tests(  # pylint: disable=too-many-statements
-        self, vunit_proj: Any, inspect: bool
+    def _setup_generator_tests(  # noqa: C901, PLR0915
+        self, vunit_proj: VUnit, inspect: bool
     ) -> None:
-        # Standard libraries
-        # pylint: disable=import-outside-toplevel
         from dataclasses import dataclass
 
         tb = vunit_proj.library(self.library_name).test_bench("tb_sine_generator")
@@ -75,9 +71,9 @@ class Module(BaseModule):
         @dataclass
         class Config:
             integer_increment: str
-            fractional_increment: Optional[str] = None
-            enable_sine: Optional[bool] = None
-            enable_cosine: Optional[bool] = None
+            fractional_increment: str | None = None
+            enable_sine: bool | None = None
+            enable_cosine: bool | None = None
 
         def add_config(config: Config) -> None:
             integer_phase_width = len(config.integer_increment)
@@ -122,16 +118,18 @@ class Module(BaseModule):
 
                     # It is technically enough to run one coherent section, but we run two
                     # to show that there is no faulty state.
-                    num_samples = 2 * coherent_sampling_count
+                    # In the case of dithering, the SFDR target is sometimes missed if we do not
+                    # run through a longer LFSR sequence.
+                    num_samples = (2 + enable_phase_dithering) * coherent_sampling_count
 
-                    generics = dict(
-                        clk_frequency_hz=clk_frequency_hz,
-                        sine_frequency_hz=sine_frequency_hz,
-                        memory_address_width=integer_phase_width - 2,
-                        enable_phase_dithering=enable_phase_dithering,
-                        enable_first_order_taylor=enable_first_order_taylor,
-                        num_samples=num_samples,
-                    )
+                    generics = {
+                        "clk_frequency_hz": clk_frequency_hz,
+                        "sine_frequency_hz": sine_frequency_hz,
+                        "memory_address_width": integer_phase_width - 2,
+                        "enable_phase_dithering": enable_phase_dithering,
+                        "enable_first_order_taylor": enable_first_order_taylor,
+                        "num_samples": num_samples,
+                    }
                     # Assign the non-default value only when used, to keep
                     # test case names mostly short, and make filtering easier.
                     if phase_fractional_width:
@@ -161,6 +159,7 @@ class Module(BaseModule):
                     add_config(config=config)
 
         # Performance plots in documentation are made from these two test cases.
+        # ruff: noqa: ERA001
         # add_config(Config(integer_increment="000111111", fractional_increment="000000"))
         # add_config(Config(integer_increment="000111111", fractional_increment="000010"))
 
@@ -220,23 +219,19 @@ class Module(BaseModule):
         #         )
         #     )
 
-    def lookup_post_check(  # pylint: disable=too-many-locals
-        self, output_path: Path, generics: dict[str, Any], inspect: bool
-    ) -> bool:
+    def lookup_post_check(self, output_path: Path, generics: dict[str, Any], inspect: bool) -> bool:
         """
         Check the result from a sine_lookup test.
         """
-        # pylint: disable=import-outside-toplevel
-        # Third party libraries
         from numpy import array_equal, roll
 
         # Set something, does not matter.
         sample_rate_hz = 100e6
 
         names = ["sine", "cosine", "minus_sine", "minus_cosine"]
-        signals = []
-        for name in names:
-            signals.append(self.load_simulation_data(output_folder=output_path, file_name=name))
+        signals = [
+            self.load_simulation_data(output_folder=output_path, file_name=name) for name in names
+        ]
 
         peak_frequency_hz_list = []
         sndr_db_list = []
@@ -260,8 +255,6 @@ class Module(BaseModule):
             print(kpi_text)
 
         if inspect:
-            # pylint: disable=import-outside-toplevel
-            # Third party libraries
             from matplotlib import pyplot as plt
 
             fig = self.setup_plot_figure()
@@ -336,8 +329,6 @@ class Module(BaseModule):
             print(result)
 
             if inspect:
-                # pylint: disable=import-outside-toplevel
-                # Third party libraries
                 from matplotlib import pyplot as plt
 
                 self.setup_plot_figure()
@@ -352,9 +343,7 @@ class Module(BaseModule):
         return True
 
     @staticmethod
-    def load_simulation_data(output_folder: Path, file_name: str) -> "ndarray":
-        # pylint: disable=import-outside-toplevel
-        # Third party libraries
+    def load_simulation_data(output_folder: Path, file_name: str) -> ndarray:
         from numpy import float64, fromfile, int32
 
         file_path = output_folder / f"{file_name}.raw"
@@ -368,23 +357,17 @@ class Module(BaseModule):
         """
         Set up a suitable default matplotlib figure, with a size that looks good.
         """
-        # pylint: disable=import-outside-toplevel
-        # Third party libraries
         from matplotlib import pyplot as plt
 
         return plt.figure(figsize=(15, 7))
 
-    def get_build_projects(self):
-        # Standard libraries
-        # pylint: disable=import-outside-toplevel
+    def get_build_projects(self) -> list[TsfpgaExampleVivadoNetlistProject]:
         from dataclasses import dataclass
 
-        # First party libraries
         # The 'hdl_modules' Python package is probably not on the PYTHONPATH in most scenarios where
         # this module is used. Hence we can not import at the top of this file.
         # This method is only called when running netlist builds in the hdl-modules repo from the
         # bundled tools/build_fpga.py, where PYTHONPATH is correctly set up.
-        # pylint: disable=import-outside-toplevel
         from hdl_modules import get_hdl_modules
 
         projects = []
@@ -392,25 +375,26 @@ class Module(BaseModule):
         part = "xc7z020clg400-1"
 
         @dataclass
-        class Config:  # pylint: disable=too-many-instance-attributes
+        class Config:
             memory_width: int
             address_width: int
             luts: int
             ffs: int
             logic: int
-            fractional_phase: Optional[int] = None
-            sine: Optional[bool] = None
-            cosine: Optional[bool] = None
-            dithering: Optional[bool] = None
-            taylor: Optional[bool] = None
+            fractional_phase: int | None = None
+            sine: bool | None = None
+            cosine: bool | None = None
+            dithering: bool | None = None
+            taylor: bool | None = None
             dsp: int = 0
             ramb18: int = 0
             ramb36: int = 0
 
         def add_config(config: Config) -> None:
-            generics = dict(
-                memory_data_width=config.memory_width, memory_address_width=config.address_width
-            )
+            generics = {
+                "memory_data_width": config.memory_width,
+                "memory_address_width": config.address_width,
+            }
             if config.fractional_phase is not None:
                 generics["phase_fractional_width"] = config.fractional_phase
             if config.sine is not None:
@@ -594,8 +578,6 @@ def get_coherent_sampling_count(sample_rate_hz: int, sine_frequency_hz: int) -> 
 
         N = a_sample = f_sample / gcd.
     """
-    # Standard libraries
-    # pylint: disable=import-outside-toplevel
     from math import gcd
 
     greatest_common_divisor = gcd(sample_rate_hz, sine_frequency_hz)
@@ -607,9 +589,7 @@ def get_coherent_sampling_count(sample_rate_hz: int, sine_frequency_hz: int) -> 
 
 
 @staticmethod
-def get_power_spectrum(
-    signal: "ndarray", sample_rate_hz: Union[int, float]
-) -> tuple["ndarray", "ndarray"]:
+def get_power_spectrum(signal: ndarray, sample_rate_hz: float) -> tuple[ndarray, ndarray]:
     """
     Return the power spectrum for the given time-domain signal.
 
@@ -623,8 +603,6 @@ def get_power_spectrum(
         * The frequency axis that the power spectrum's bins correspond to.
         * The power spectrum with a linear scale (fft^2).
     """
-    # Third party libraries
-    # pylint: disable=import-outside-toplevel
     from numpy import abs as np_abs
     from scipy.fft import rfft, rfftfreq
 
@@ -639,7 +617,7 @@ def get_power_spectrum(
 
 
 @staticmethod
-def power_spectrum_to_db(power_spectrum: "ndarray") -> "ndarray":
+def power_spectrum_to_db(power_spectrum: ndarray) -> ndarray:
     """
     Arguments:
         power_spectrum: A linear-scale power spectrum (fft^2).
@@ -647,20 +625,17 @@ def power_spectrum_to_db(power_spectrum: "ndarray") -> "ndarray":
     Returns:
         The power spectrum in a normalized dB scale (20 log10(fft)).
     """
-    # Third party libraries
-    # pylint: disable=import-outside-toplevel
     from numpy import log10
     from numpy import max as np_max
 
     power_spectrum_db = 10 * log10(power_spectrum)
-    # Normalized with the peak a zero.
-    power_spectrum_normalized_db = power_spectrum_db - np_max(power_spectrum_db)
 
-    return power_spectrum_normalized_db
+    # Normalized with the peak at zero dB.
+    return power_spectrum_db - np_max(power_spectrum_db)
 
 
 def calculate_single_tone_sndr(
-    power_spectrum: "ndarray", frequency_axis_hz: "ndarray"
+    power_spectrum: ndarray, frequency_axis_hz: ndarray
 ) -> tuple[float, float]:
     """
     Calculate the signal-to-(noise and distortion) ratio (SNDR) for the given power spectrum.
@@ -678,8 +653,6 @@ def calculate_single_tone_sndr(
         * The frequency in Hertz of the peak in the power spectrum.
         * The SNDR in dB (20 log10(fft)).
     """
-    # Third party libraries
-    # pylint: disable=import-outside-toplevel
     from numpy import argmax, log10
 
     max_idx = argmax(power_spectrum)
@@ -696,7 +669,7 @@ def calculate_single_tone_sndr(
 
 
 @staticmethod
-def calculate_sfdr_db(power_spectrum: "ndarray") -> float:
+def calculate_sfdr_db(power_spectrum: ndarray) -> float:
     """
     Calculate the spurious-free dynamic range (SFDR) for the given power spectrum.
     https://en.wikipedia.org/wiki/Spurious-free_dynamic_range
@@ -710,11 +683,8 @@ def calculate_sfdr_db(power_spectrum: "ndarray") -> float:
     Returns:
         The SFDR in dB scale (20 log10(fft)).
     """
-    # pylint: disable=import-outside-toplevel
-    # Standard libraries
     from math import log10
 
-    # Third party libraries
     from numpy import partition
 
     assert power_spectrum.size >= 1
@@ -724,12 +694,10 @@ def calculate_sfdr_db(power_spectrum: "ndarray") -> float:
     second_largest_value = partition(power_spectrum.flatten(), -2)[-2]
 
     sfdr_linear_ratio = largest_value / second_largest_value
-    sfdr_db = 10 * log10(sfdr_linear_ratio)
-
-    return sfdr_db
+    return 10 * log10(sfdr_linear_ratio)
 
 
-def calculate_thd_percent(power_spectrum: "ndarray") -> float:
+def calculate_thd_percent(power_spectrum: ndarray) -> float:
     """
     Calculate the total harmonic distortion (THD) for the given power spectrum.
     Result is a percentage of the total harmonic tone power to the fundamental
@@ -761,8 +729,7 @@ the-importance-of-total-harmonic-distortion/
         Range is a percentage range, typically [0, 100], but can be larger if the signal is
         very bad.
     """
-    # pylint: disable=import-outside-toplevel
-    # Standard libraries
+
     from math import sqrt
 
     max_idx = power_spectrum.argmax()
@@ -781,9 +748,8 @@ the-importance-of-total-harmonic-distortion/
 
     power_ratio = overtone_power / max_power
     thd_ratio = sqrt(power_ratio)
-    thd_percentage = thd_ratio * 100
 
-    return thd_percentage
+    return thd_ratio * 100
 
 
 def calculate_enob(value_db: float) -> float:
@@ -800,7 +766,7 @@ def calculate_enob(value_db: float) -> float:
     return (value_db - 1.76) / 6.02
 
 
-def to_engineering_notation(value: Union[int, float]) -> str:
+def to_engineering_notation(value: float) -> str:
     """
     Convert e.g. 1048576 to "1.05 M".
 
@@ -822,8 +788,8 @@ def to_engineering_notation(value: Union[int, float]) -> str:
 
 
 def plot_signal_on_ax(
-    ax: "Axes",
-    signal: "ndarray",
+    ax: Axes,
+    signal: ndarray,
     set_x_label: bool = True,
     set_y_label: bool = True,
     color: str = "tab:orange",
@@ -834,8 +800,7 @@ def plot_signal_on_ax(
     https://matplotlib.org/stable/gallery/color/named_colors.html#tableau-palette
     https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html
     """
-    # pylint: disable=import-outside-toplevel
-    # Third party libraries
+
     from numpy import arange
 
     signal_index_axis = arange(signal.size)
@@ -851,18 +816,17 @@ def plot_signal_on_ax(
 
 
 def plot_power_spectrum_on_ax(
-    ax: "Axes",
-    frequency_axis_hz: "ndarray",
-    power_spectrum: "ndarray",
+    ax: Axes,
+    frequency_axis_hz: ndarray,
+    power_spectrum: ndarray,
     peak_frequency_hz: float,
-    floor_db: Optional[float] = None,
-    peak_text: Optional[str] = None,
+    floor_db: float | None = None,
+    peak_text: str = "",
 ) -> None:
     """
     Plot and annotate the power spectrum on the provided pre-created axes.
     """
-    # pylint: disable=import-outside-toplevel
-    # Third party libraries
+
     from matplotlib.ticker import EngFormatter
 
     power_spectrum_db = power_spectrum_to_db(power_spectrum=power_spectrum)
@@ -900,9 +864,9 @@ def plot_power_spectrum_on_ax(
         )
 
 
-class SineGeneratorResult:  # pylint: disable=too-many-instance-attributes
+class SineGeneratorResult:
     def __init__(
-        self, signal: "ndarray", generics: dict[str, Any], is_fractional_phase: bool
+        self, signal: ndarray, generics: dict[str, Any], is_fractional_phase: bool
     ) -> None:
         frequency_axis_hz, power_spectrum = get_power_spectrum(
             signal=signal, sample_rate_hz=generics["clk_frequency_hz"]
@@ -920,13 +884,12 @@ class SineGeneratorResult:  # pylint: disable=too-many-instance-attributes
         # Sanity check that the detected peak is where we expect it.
         # I.e. that phase accumulation works as expected.
         sine_frequency_hz = generics["sine_frequency_hz"]
-        assert (
-            sine_frequency_hz * 0.9999 < peak_frequency_hz < sine_frequency_hz * 1.0001
-        ), f"{peak_frequency_hz} {sine_frequency_hz}"
+        assert sine_frequency_hz * 0.9999 < peak_frequency_hz < sine_frequency_hz * 1.0001, (
+            f"{peak_frequency_hz} {sine_frequency_hz}"
+        )
 
         self.peak_frequency_hz = peak_frequency_hz
         self.sndr_db = sndr_db
-        self.sfdr_db = sfdr_db
 
         expected_sndr_db, expected_sfdr_db = self.get_expected_kpi(
             generics=generics, is_fractional_phase=is_fractional_phase
@@ -964,27 +927,24 @@ class SineGeneratorResult:  # pylint: disable=too-many-instance-attributes
         return 6 * sndr_enob, 6 * sfdr_enob
 
     def check(self) -> None:
-        # pylint: disable=import-outside-toplevel
-        # Standard libraries
         from math import isinf
 
         # Upper range is huge, especially when dithering is enabled.
-        assert (
-            self.expected_sfdr_db <= self.sfdr_db
-        ), f"Unexpected SFDR. Got {self.sfdr_db}, expected {self.expected_sfdr_db}"
+        assert self.sfdr_db >= self.expected_sfdr_db, (
+            f"Unexpected SFDR. Got {self.sfdr_db}, expected at least {self.expected_sfdr_db}"
+        )
 
         if not isinf(self.sndr_db):
-            assert (
-                self.expected_sndr_db <= self.sndr_db < self.expected_sndr_db + 9
-            ), f"Unexpected SNDR ENOB. Got {self.sndr_db}, expected around {self.expected_sndr_db}"
+            assert self.expected_sndr_db <= self.sndr_db < self.expected_sndr_db + 9, (
+                f"Unexpected SNDR ENOB. Got {self.sndr_db}, expected around {self.expected_sndr_db}"
+            )
 
     @staticmethod
-    def plot_signal(signal: "ndarray", coherent_sampling_count: int) -> None:
+    def plot_signal(signal: ndarray, coherent_sampling_count: int) -> None:
         """
         Plot the time-domain signal from test, zoomed and full, with the pre-determined layout.
         """
-        # pylint: disable=import-outside-toplevel
-        # Third party libraries
+
         from matplotlib import pyplot as plt
 
         ax_signal = plt.subplot2grid((2, 2), (0, 0))
@@ -998,8 +958,7 @@ class SineGeneratorResult:  # pylint: disable=too-many-instance-attributes
         """
         Plot the power spectrum with the pre-determined layout.
         """
-        # pylint: disable=import-outside-toplevel
-        # Third party libraries
+
         from matplotlib import pyplot as plt
 
         ax = plt.subplot2grid((2, 2), (0, 1), rowspan=2)
@@ -1018,11 +977,7 @@ class SineGeneratorResult:  # pylint: disable=too-many-instance-attributes
         sfdr_enob = calculate_enob(value_db=self.sfdr_db)
         thd_percent = calculate_thd_percent(power_spectrum=self.power_spectrum)
 
-        if is_fractional_phase:
-            mode_status = "Fractional"
-        else:
-            mode_status = "Integer"
-
+        mode_status = "Fractional" if is_fractional_phase else "Integer"
         mode_status += " phase mode. "
 
         if generics["enable_phase_dithering"]:
