@@ -31,7 +31,7 @@ package axi_stream_pkg is
   -- Data field (TDATA).
   -- The width value below is a max value, implementation should only take into regard the bits
   -- that are actually used.
-  constant axi_stream_data_sz : positive := 128;
+  constant axi_stream_data_sz : positive := 32;
 
   -- Data strobe field (TSTRB).
   -- The width value below is a max value, implementation should only take into regard the bits
