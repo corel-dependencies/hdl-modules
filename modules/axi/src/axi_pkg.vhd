@@ -29,7 +29,6 @@ package axi_pkg is
 
   -- Data field (RDATA or WDATA).
   constant axi_data_sz : positive := 32;
-  -- constant axi_data_sz : positive := 128;
   subtype axi_data_width_t is positive range 8 to axi_data_sz;
 
   ------------------------------------------------------------------------------
@@ -46,7 +45,6 @@ package axi_pkg is
   -- The width value below is a max value, implementation should only take into regard the bits
   -- that are actually used.
   constant axi_a_addr_sz : positive := 32;
-  -- constant axi_a_addr_sz : positive := 64;
   subtype axi_address_width_t is positive range 1 to axi_a_addr_sz;
 
   -- Length field (ARLEN or AWLEN)

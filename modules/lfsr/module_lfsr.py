@@ -18,14 +18,16 @@ from tsfpga.system_utils import read_file
 from tsfpga.vivado.build_result_checker import EqualTo, Ffs, MaximumLogicLevel, TotalLuts
 from tsfpga.vivado.generics import BitVectorGenericValue
 
-if TYPE_CHECKING:
-    from numpy import ndarray
-    from vunit.ui import VUnit
+from numpy import ndarray
+from vunit.ui import VUnit
 
 
 class Module(BaseModule):
     def setup_vunit(  # pylint: disable=unused-argument
-        self, vunit_proj: Any, inspect: bool = False, **kwargs: Any
+        self,
+        vunit_proj: VUnit,
+        inspect: bool = False,
+        **kwargs: Any,  # noqa: ANN401, ARG002
     ) -> None:
         self._setup_lfsr_pkg_tests(vunit_proj=vunit_proj)
         self._setup_lfsr_tests(vunit_proj=vunit_proj, inspect=inspect)

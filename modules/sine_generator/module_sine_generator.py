@@ -32,8 +32,11 @@ if TYPE_CHECKING:
 
 class Module(BaseModule):
     def setup_vunit(  # pylint: disable=unused-argument
-        self, vunit_proj: Any, inspect: bool = False, **kwargs: Any
-    ) -> None:
+        self,
+        vunit_proj: VUnit,
+        inspect: bool = False,
+        **kwargs: Any,  # noqa: ANN401, ARG002
+   ) -> None:
         self._setup_lookup_tests(vunit_proj=vunit_proj, inspect=inspect)
         self._setup_generator_tests(vunit_proj=vunit_proj, inspect=inspect)
 
