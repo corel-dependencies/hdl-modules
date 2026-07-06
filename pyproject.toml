@@ -1,6 +1,24 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hdl_modules"
+version = "6.2.2-dev"
+dependencies = []
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages]
+find = {include = ["hdl_modules*"]}
+
+[tool.setuptools.package-data]
+"*" = ["*.vhd", "*.tcl"]
+
+
 # ------------------------------------------------------------------------------
 [tool.ruff]
-
 line-length = 100
 
 

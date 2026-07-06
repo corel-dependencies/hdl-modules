@@ -11,3 +11,4 @@
 generated
 build
 .DS_Store
+hdl_modules.egg-info
