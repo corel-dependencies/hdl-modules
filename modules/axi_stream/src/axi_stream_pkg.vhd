@@ -26,7 +26,7 @@ package axi_stream_pkg is
   -- Destination field (TDEST).
   -- The width value below is a max value, implementation should only take into regard the bits
   -- that are actually used.
-  constant axi_stream_dest_sz : positive := 4;
+  constant axi_stream_dest_sz : positive := 8;
 
   -- Data field (TDATA).
   -- The width value below is a max value, implementation should only take into regard the bits
@@ -51,20 +51,26 @@ package axi_stream_pkg is
   -- Record for the AXI-Stream signals in the master-to-slave direction.
   type axi_stream_m2s_t is record
     valid : std_ulogic;
-    data : std_ulogic_vector(axi_stream_data_sz - 1 downto 0);
-    last : std_ulogic;
-    user : std_ulogic_vector(axi_stream_user_sz - 1 downto 0);
-    -- Excluded members: tkeep, tstrb, tid, tdest.
-    -- These are optional according to the standard and should be added when needed.
+    data  : std_ulogic_vector(axi_stream_data_sz - 1 downto 0);
+    last  : std_ulogic;
+    user  : std_ulogic_vector(axi_stream_user_sz - 1 downto 0);
+    keep  : std_ulogic_vector(axi_stream_keep_sz - 1 downto 0);
+    id    : std_ulogic_vector(axi_stream_id_sz - 1 downto 0);
+    dest  : std_ulogic_vector(axi_stream_dest_sz - 1 downto 0);
+  -- Excluded members: tkeep, tstrb, tid, tdest.
+  -- These are optional according to the standard and should be added when needed.
   end record;
   type axi_stream_m2s_vec_t is array (integer range <>) of axi_stream_m2s_t;
 
   constant axi_stream_m2s_init : axi_stream_m2s_t := (
     valid => '0',
-    last => '-',
-    data => (others => '-'),
-    user => (others => '-')
-  );
+    last  => '0',
+    data  => (others => '0'),
+    user  => (others => '0'),
+    keep  => (others => '0'),
+    id    => (others => '0'),
+    dest  => (others => '0')
+    );
 
   -- Record for the AXI-Stream signals in the slave-to-master direction.
   type axi_stream_s2m_t is record
@@ -76,21 +82,30 @@ package axi_stream_pkg is
 
   function axi_stream_m2s_sz(
     data_width : positive range 1 to axi_stream_data_sz;
-    user_width : natural range 0 to axi_stream_user_sz
-  ) return natural;
+    user_width : natural range 0 to axi_stream_user_sz;
+    keep_width : natural range 0 to axi_stream_keep_sz;
+    id_width   : natural range 0 to axi_stream_id_sz;
+    dest_width : natural range 0 to axi_stream_dest_sz
+    ) return natural;
 
   function to_slv(
-    data : axi_stream_m2s_t;
-    data_width : positive range 1 to axi_stream_data_sz;
-    user_width : natural range 0 to axi_stream_user_sz
-  ) return std_ulogic_vector;
-
-  function to_axi_stream_m2s(
-    data : std_ulogic_vector;
+    data       : axi_stream_m2s_t;
     data_width : positive range 1 to axi_stream_data_sz;
     user_width : natural range 0 to axi_stream_user_sz;
-    valid : std_ulogic
-  ) return axi_stream_m2s_t;
+    keep_width : natural range 0 to axi_stream_keep_sz;
+    id_width   : natural range 0 to axi_stream_id_sz;
+    dest_width : natural range 0 to axi_stream_dest_sz
+    ) return std_ulogic_vector;
+
+  function to_axi_stream_m2s(
+    data       : std_ulogic_vector;
+    data_width : positive range 1 to axi_stream_data_sz;
+    user_width : natural range 0 to axi_stream_user_sz;
+    keep_width : natural range 0 to axi_stream_keep_sz;
+    id_width   : natural range 0 to axi_stream_id_sz;
+    dest_width : natural range 0 to axi_stream_dest_sz;
+    valid      : std_ulogic
+    ) return axi_stream_m2s_t;
 
 end;
 
@@ -98,33 +113,51 @@ package body axi_stream_pkg is
 
   function axi_stream_m2s_sz(
     data_width : positive range 1 to axi_stream_data_sz;
-    user_width : natural range 0 to axi_stream_user_sz
-  ) return natural is
+    user_width : natural range 0 to axi_stream_user_sz;
+    keep_width : natural range 0 to axi_stream_keep_sz;
+    id_width   : natural range 0 to axi_stream_id_sz;
+    dest_width : natural range 0 to axi_stream_dest_sz
+    ) return natural is
   begin
     -- Excluded member: valid
     -- The 1 is for 'last'.
-    return data_width + user_width + 1;
+    return data_width + user_width + keep_width + id_width + dest_width + 1;
   end function;
 
   function to_slv(
-    data : axi_stream_m2s_t;
+    data       : axi_stream_m2s_t;
     data_width : positive range 1 to axi_stream_data_sz;
-    user_width : natural range 0 to axi_stream_user_sz
-  ) return std_ulogic_vector is
-    variable result : std_ulogic_vector(axi_stream_m2s_sz(data_width, user_width) - 1 downto 0);
+    user_width : natural range 0 to axi_stream_user_sz;
+    keep_width : natural range 0 to axi_stream_keep_sz;
+    id_width   : natural range 0 to axi_stream_id_sz;
+    dest_width : natural range 0 to axi_stream_dest_sz
+    ) return std_ulogic_vector is
+    variable result : std_ulogic_vector(axi_stream_m2s_sz(data_width, user_width, keep_width, id_width, dest_width) - 1 downto 0);
     variable lo, hi : natural := 0;
   begin
-    lo := 0;
-    hi := lo + data_width - 1;
+    lo                   := 0;
+    hi                   := lo + data_width - 1;
     result(hi downto lo) := data.data(data_width - 1 downto 0);
 
-    lo := hi + 1;
-    hi := lo;
+    lo         := hi + 1;
+    hi         := lo;
     result(hi) := data.last;
 
-    lo := hi + 1;
-    hi := lo + user_width - 1;
+    lo                   := hi + 1;
+    hi                   := lo + user_width - 1;
     result(hi downto lo) := data.user(user_width - 1 downto 0);
+
+    lo                   := hi + 1;
+    hi                   := lo + keep_width - 1;
+    result(hi downto lo) := data.keep(keep_width - 1 downto 0);
+
+    lo                   := hi + 1;
+    hi                   := lo + id_width - 1;
+    result(hi downto lo) := data.id(id_width - 1 downto 0);
+
+    lo                   := hi + 1;
+    hi                   := lo + dest_width - 1;
+    result(hi downto lo) := data.dest(dest_width - 1 downto 0);
 
     assert hi = result'high;
 
@@ -132,26 +165,41 @@ package body axi_stream_pkg is
   end function;
 
   function to_axi_stream_m2s(
-    data : std_ulogic_vector;
+    data       : std_ulogic_vector;
     data_width : positive range 1 to axi_stream_data_sz;
     user_width : natural range 0 to axi_stream_user_sz;
-    valid : std_ulogic
-  ) return axi_stream_m2s_t is
-    variable offset : natural := data'low;
+    keep_width : natural range 0 to axi_stream_keep_sz;
+    id_width   : natural range 0 to axi_stream_id_sz;
+    dest_width : natural range 0 to axi_stream_dest_sz;
+    valid      : std_ulogic
+    ) return axi_stream_m2s_t is
+    variable offset : natural          := data'low;
     variable result : axi_stream_m2s_t := axi_stream_m2s_init;
-    variable lo, hi : natural := 0;
+    variable lo, hi : natural          := 0;
   begin
-    lo := 0;
-    hi := lo + data_width - 1;
+    lo                                   := 0;
+    hi                                   := lo + data_width - 1;
     result.data(data_width - 1 downto 0) := data(hi + offset downto lo + offset);
 
-    lo := hi + 1;
-    hi := lo;
+    lo          := hi + 1;
+    hi          := lo;
     result.last := data(hi + offset);
 
-    lo := hi + 1;
-    hi := lo + user_width - 1;
+    lo                                   := hi + 1;
+    hi                                   := lo + user_width - 1;
     result.user(user_width - 1 downto 0) := data(hi + offset downto lo + offset);
+
+    lo                                   := hi + 1;
+    hi                                   := lo + keep_width - 1;
+    result.keep(keep_width - 1 downto 0) := data(hi + offset downto lo + offset);
+
+    lo                               := hi + 1;
+    hi                               := lo + id_width - 1;
+    result.id(id_width - 1 downto 0) := data(hi + offset downto lo + offset);
+
+    lo                                   := hi + 1;
+    hi                                   := lo + dest_width - 1;
+    result.dest(dest_width - 1 downto 0) := data(hi + offset downto lo + offset);
 
     assert hi + offset = data'high;
 

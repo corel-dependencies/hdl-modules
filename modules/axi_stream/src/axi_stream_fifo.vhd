@@ -30,6 +30,9 @@ entity axi_stream_fifo is
   generic (
     data_width : positive range 1 to axi_stream_data_sz;
     user_width : natural range 0 to axi_stream_user_sz;
+    keep_width : natural range 0 to axi_stream_keep_sz;
+    id_width : natural range 0 to axi_stream_id_sz;
+    dest_width : natural range 0 to axi_stream_dest_sz;
     asynchronous : boolean;
     depth : positive;
     ram_type : ram_style_t := ram_style_auto
@@ -50,7 +53,7 @@ end entity;
 architecture a of axi_stream_fifo is
 
   constant bus_width : positive := axi_stream_m2s_sz(
-    data_width=>data_width, user_width=>user_width
+    data_width=>data_width, user_width=>user_width, keep_width => keep_width, id_width => id_width, dest_width => dest_width
   );
 
   signal write_data, read_data : std_ulogic_vector(bus_width - 1 downto 0) := (others => '0');
@@ -58,10 +61,10 @@ architecture a of axi_stream_fifo is
 
 begin
 
-  write_data <= to_slv(data=>input_m2s, data_width=>data_width, user_width=>user_width);
+  write_data <= to_slv(data=>input_m2s, data_width=>data_width, user_width=>user_width, keep_width=>keep_width, id_width=>id_width, dest_width=>dest_width);
 
   output_m2s <= to_axi_stream_m2s(
-    data=>read_data, data_width=>data_width, user_width=>user_width, valid=>read_valid
+    data=>read_data, data_width=>data_width, user_width=>user_width, keep_width=>keep_width, id_width=>id_width, dest_width=>dest_width, valid=>read_valid
   );
 
 

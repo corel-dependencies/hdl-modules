@@ -119,22 +119,23 @@ entity lfsr_fibonacci_multi is
   generic (
     -- The number of output bits.
     -- For each clock cycle, the LFSR will be stepped this many times.
-    output_width : positive;
+    output_width        : positive;
     -- Optionally, specify a minimum LFSR state length.
     minimum_lfsr_length : positive := output_width;
     -- Optionally alter the initial state of the LFSR.
-    seed : std_ulogic_vector(
-      get_required_lfsr_length(shift_count=>output_width, minimum_length=>minimum_lfsr_length)
+    seed                : std_ulogic_vector(
+      get_required_lfsr_length(shift_count    => output_width, minimum_length => minimum_lfsr_length)
       downto
       1
-    ) := (others => '1')
-  );
+      )                            := (others => '1')
+    );
   port(
-    clk : in std_ulogic;
+    clk     : in  std_ulogic;
+    aresetn : in  std_ulogic                                   := '1';
     --# {{}}
-    enable : in std_ulogic := '1';
-    output : out std_ulogic_vector(output_width - 1 downto 0) := (others => '0')
-  );
+    enable  : in  std_ulogic                                   := '1';
+    output  : out std_ulogic_vector(output_width - 1 downto 0) := (others => '0')
+    );
 end entity;
 
 architecture a of lfsr_fibonacci_multi is
@@ -153,8 +154,8 @@ architecture a of lfsr_fibonacci_multi is
   -- The non-zero tap table excludes the implied output bit of a single-bit LFSR.
   -- Insert this value into the table to make the state code below simpler.
   constant taps : natural_vec_t(0 to 5) := (
-    0=>lfsr_length, 1 to 5 => non_zero_tap_table(lfsr_length)
-  );
+    0 =>lfsr_length, 1 to 5 => non_zero_tap_table(lfsr_length)
+    );
 
 begin
 
@@ -178,34 +179,38 @@ begin
 
 
   ------------------------------------------------------------------------------
-  main : process
+  main : process(clk, aresetn)
     variable next_state : std_ulogic := '0';
-    variable tap_offset : natural := 0;
+    variable tap_offset : natural    := 0;
   begin
-    wait until rising_edge(clk);
+    if not aresetn then
+      state <= seed;
+    elsif rising_edge(clk) then
 
-    for state_idx in state'range loop
-      if state_idx > shift_count then
-        next_state := state(state_idx - shift_count);
-      else
+      for state_idx in state'range loop
+        if state_idx > shift_count then
+          next_state := state(state_idx - shift_count);
+        else
 
-        tap_offset := shift_count - state_idx;
-        next_state := '0';
+          tap_offset := shift_count - state_idx;
+          next_state := '0';
 
-        for tap_idx in taps'range loop
-          if taps(tap_idx) /= 0 then
-            -- Note that both XOR and XNOR seem to work here.
-            -- Wikipedia uses XOR, Xilinx application note uses XNOR.
-            -- Both have been simulated with very similar result.
-            next_state := next_state xnor state(taps(tap_idx) - tap_offset);
-          end if;
-        end loop;
-      end if;
+          for tap_idx in taps'range loop
+            if taps(tap_idx) /= 0 then
+              -- Note that both XOR and XNOR seem to work here.
+              -- Wikipedia uses XOR, Xilinx application note uses XNOR.
+              -- Both have been simulated with very similar result.
+              next_state := next_state xnor state(taps(tap_idx) - tap_offset);
+            end if;
+          end loop;
+        end if;
 
-      if enable then
-        state(state_idx) <= next_state;
-      end if;
-    end loop;
+        if enable then
+          state(state_idx) <= next_state;
+        end if;
+      end loop;
+
+    end if;
   end process;
 
 end architecture;

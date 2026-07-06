@@ -38,7 +38,7 @@ package axi_pkg is
   -- ID field (ARID, AWID, BID as well as RID if using AXI3)
   -- The width value below is a max value, implementation should only take into regard the bits
   -- that are actually used.
-  constant axi_id_sz : positive := 6;
+  constant axi_id_sz : positive := 8;
   subtype axi_id_width_t is natural range 0 to axi_id_sz;
 
   -- Address field (ARADDR or AWADDR).

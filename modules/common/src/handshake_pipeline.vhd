@@ -44,15 +44,13 @@ entity handshake_pipeline is
     input_last : in std_ulogic := '-';
     input_data : in std_ulogic_vector(data_width - 1 downto 0) := (others => '-');
     -- Optional to connect. Must set valid 'strobe_unit_width' generic value in order to use this.
-    input_strobe : in std_ulogic_vector(data_width / strobe_unit_width - 1 downto 0) :=
-      (others => '-');
+    input_strobe : in std_ulogic_vector(data_width / strobe_unit_width - 1 downto 0) := (others => '-');
     --# {{}}
     output_ready : in std_ulogic;
     output_valid : out std_ulogic := '0';
     output_last : out std_ulogic := '0';
     output_data : out std_ulogic_vector(data_width - 1 downto 0) := (others => '0');
-    output_strobe : out std_ulogic_vector(data_width / strobe_unit_width - 1 downto 0) :=
-      (others => '0')
+    output_strobe : out std_ulogic_vector(data_width / strobe_unit_width - 1 downto 0) := (others => '0')
   );
 end entity;
 

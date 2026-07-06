@@ -25,6 +25,7 @@ package axi_lite_pkg is
   -- Address field (ARADDR or AWADDR).
   -- The width value below is a max value, implementation should only take into regard the bits
   -- that are actually used.
+  constant axi_lite_a_sz : positive := 32;
   subtype axi_lite_address_width_t is positive range 1 to 32;
 
   -- Record for the AR/AW signals in the master-to-slave direction.

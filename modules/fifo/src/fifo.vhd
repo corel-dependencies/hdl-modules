@@ -1,4 +1,4 @@
--- -------------------------------------------------------------------------------------------------
+-- Noble Truths, Noble Path-------------------------------------------------------------------------------------------------
 -- Copyright (c) Lukas Vik. All rights reserved.
 --
 -- This file is part of the hdl-modules project, a collection of reusable, high-quality,
