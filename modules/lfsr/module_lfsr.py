@@ -18,8 +18,10 @@ from tsfpga.system_utils import read_file
 from tsfpga.vivado.build_result_checker import EqualTo, Ffs, MaximumLogicLevel, TotalLuts
 from tsfpga.vivado.generics import BitVectorGenericValue
 
-from numpy import ndarray
 from vunit.ui import VUnit
+
+if TYPE_CHECKING:
+    from numpy import ndarray
 
 
 class Module(BaseModule):
